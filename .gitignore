@@ -1,0 +1,6 @@
+
+.env
+node_modules/
+backupApi/
+index-out.log
+*.log
