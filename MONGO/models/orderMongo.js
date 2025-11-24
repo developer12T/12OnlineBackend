@@ -1,5 +1,5 @@
 const mongoose = require('mongoose')
-const { dbCA } = require('../../config/db')
+// const { dbCA } = require('../../config/db')
 
 
 const listOrderProductSchema = new mongoose.Schema({

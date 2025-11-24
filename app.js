@@ -36,7 +36,7 @@ app.use('/PurchaseCustomerOrder',auth,PurchaseCustomerOrder)
 app.use('/manageUser',manageUser)
 
 //M3API
-app.use('/M3API',M3API)
+// app.use('/M3API',M3API)
 
 //authen
 app.use('/12Trading',loginToken) 

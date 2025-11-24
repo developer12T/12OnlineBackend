@@ -1,5 +1,5 @@
 const mongoose = require('mongoose')
-const { dbCA } = require('../../config/db')
+// const { CA_DB_URI_UAT } = require('../../config/mongoDb')
 
 
 
