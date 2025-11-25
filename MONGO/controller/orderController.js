@@ -1,4 +1,20 @@
-const orderModel = require('../../model/mongo/orderMongo')
+const orderModel = require('../../MONGO/models/orderMongo')
+
+
+
+exports.index = async (req, res) => {
+    try {
+        
+        res.status(200).json({
+            status:200,
+            message:'Hello Mongo'
+        })
+
+    } catch (error) {
+    console.error(error)
+    res.status(500).json({ status: '501', message: error.message })
+    }
+}
 
 
 exports.addOrderToMongo = async (req, res) => { 
