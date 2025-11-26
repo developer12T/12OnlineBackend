@@ -5,7 +5,9 @@ const mongoose = require('mongoose')
 const listOrderProductSchema = new mongoose.Schema({
   auto_id :{ type: String },
   id: { type: String },
+  numberOrder:{ type: String },
   productid: { type: String },
+  sku : { type: String },
   name: { type: String },
   procode: { type: String },
   number: { type: String },
@@ -25,7 +27,6 @@ const listOrderProductSchema = new mongoose.Schema({
   bundleName: { type: String },
   integrationItemId: { type: String },
   integrationVariantId:{ type: String },
-  numberOrder:{ type: String },
 })
 
 
@@ -112,6 +113,6 @@ const orderSchema = new mongoose.Schema(
 
 module.exports = conn => {
   return {
-    Order: conn.model('Order', orderSchema)
+    Ordermongo: conn.model('Order', orderSchema)
   }
 }

@@ -1,7 +1,7 @@
 // const storeModel = require('../../models/cash/store');
 const { 
   // dbCA, dbCR, dbPC, dbUSER,
-  dbCA_UAT } = require('../config/db')
+  dbCA_UAT } = require('../../authen/config/mongoDb')
 
 function getModelsByChannel (channel, res, model) {
   let conn
