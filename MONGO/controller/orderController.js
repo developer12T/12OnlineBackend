@@ -1,5 +1,8 @@
 const orderModel = require('../../MONGO/models/orderMongo')
+const OrderOldModel = require('../../MONGO/models/orderMongoOld')
 const { OrderHis, OrderDetailHis, Order, OrderDetail } = require('../../zort/model/Order')
+const { Customer } = require('../../zort/model/Customer')
+const { Product } = require('../../zort/model/Product')
 const { Op } = require('sequelize');
 const { getModelsByChannel } = require('../../authen/middleware/channel')
 
@@ -21,8 +24,10 @@ exports.index = async (req, res) => {
 exports.addOrderToMongo = async (req, res) => {
     try {
 
+        const { type } = req.body
         const channel = req.headers['x-channel']
-        const { Ordermongo } = getModelsByChannel(channel, res, orderModel)
+        // const { Ordermongo } = getModelsByChannel(channel, res, orderModel)
+        const { Ordermongo } = getModelsByChannel(channel, res, OrderOldModel)
 
         const orderHead = await Order.findAll({
             where: {
@@ -31,10 +36,17 @@ exports.addOrderToMongo = async (req, res) => {
             }
         });
 
+
         const numberId = [...new Set(orderHead.flatMap(item => item.number))];
         const customerIdList = [...new Set(orderHead.flatMap(item => item.customerid))];
 
-        
+        const customerData = await Customer.findAll({
+            where: {
+                customerid: {
+                    [Op.in]: customerIdList
+                }
+            }
+        });
 
         const orderLine = await OrderDetail.findAll({
             where: {
@@ -44,14 +56,82 @@ exports.addOrderToMongo = async (req, res) => {
             }
         });
 
-        let orderMongo = []
+        const skuList = [...new Set(orderLine.flatMap(item => item.sku))];
 
+        const product = await Product.findAll({
+            where: {
+                sku: {
+                    [Op.in]: skuList
+                }
+            }
+        });
+
+
+        let orderMongo = []
+        let promotion = []
 
         for (const row of orderHead) {
 
             const orderDetail = orderLine.filter(item => item.numberOrder === row.number);
 
             const detail = orderDetail.map(item => item.dataValues || item);
+
+            const customerDetail = customerData.find(item => item.customerid === row.customerid)
+
+            let listProduct = detail.map(d => {
+                if (d.procode != null && d.procode !== '') {
+                    return null;
+                }
+
+                const productDetail = product.find(p => p.sku === d.sku);
+                const unit = d.sku.slice(12, 15);
+
+                return {
+                    id: d.productId,
+                    sku: d.sku,
+                    name: d.name,
+                    groupCode: productDetail?.categoryid ?? '',
+                    group: productDetail?.category ?? '',
+                    brandCode: '',
+                    brand: '',
+                    size: productDetail?.weight ?? '0',
+                    flavourCode: '',
+                    flavour: '',
+                    qty: d.number,
+                    unit: unit,
+                    unitName: '',
+                    price: d.pricepernumber,
+                    subtotal: d.totalprice,
+                    discount: '',
+                    netTotal: d.totalprice
+                };
+            });
+
+            // ลบ item ที่เป็น null ออก
+            listProduct = listProduct.filter(Boolean);
+
+            let listPromotions = detail.map(d => {
+                // ข้ามเฉพาะรายการที่ไม่มี procode
+                if (d.procode === null || d.procode === '') {
+                    return null;
+                }
+
+                const productDetail = product.find(p => p.sku === d.sku);
+                const unit = d.sku.slice(12, 15);
+
+                return {
+                    d
+                    // ใส่ข้อมูลตามต้องการ
+                    // procode: d.procode,
+                    // productId: d.productId,
+                    // sku: d.sku,
+                    // unit,
+                    // detail: productDetail
+                }
+            }).filter(Boolean);
+
+            promotion.push(listPromotions)
+
 
             if (type === 'new') {
                 const dataTran = {
@@ -122,74 +202,69 @@ exports.addOrderToMongo = async (req, res) => {
                     // listProduct: detail
 
                 };
-                Ordermongo.create(dataTran)
+                // Ordermongo.create(dataTran)
             } else if (type === 'old') {
-                const dataTran = {
 
-                    type:row.saleschannel,
-                    orderId : row.number,
-                    sale : {
-                        saleCode:'',
-                        salePayer:"",
-                        name:"",
-                        tel:"",
-                        warehouse:""
-                    },
-                    store: {
-                        storeId:row.customerid,
-                        name:'',
-                        type:row.saleschannel,
-                        address:"",
-                        taxId:"",
-                        tel:"",
-                        area:"",
-                        zone:""
-                    },
-                    shipping:{
-                        default:'',
-                        shippingId:row.shippingchannel,
-                        address:row.shippingaddress,
-                        district:row.shippingdistrict,
-                        subDistrict:row.shippingsubdistrict,
-                        province:row.shippingprovince,
-                        postCode:row.shippingpostcode,
-                        latitude:"0.00",
-                        longtitude:"0.00",
-                    },
-                    note:'',
-                    latitude:'',
-                    longitude:'',
-                    status:"",
-                    statusTH:"",
-                    listProduct:{
+                const orderExit = await Ordermongo.findOne({ orderId: row.number })
+                if (!orderExit) {
+                    const dataTran = {
 
-                    },
-                    subtotal:0,
-                    discount:0,
-                    vat:0,
-                    totalExVat:0,
-                    qr:0,
-                    total:0,
-                    paymentMethod:'',
-                    paymentStatus:row.paymentstatus,
-                    reference:'',
-                    period:'',
-
-
-
-
-
+                        type: row.saleschannel,
+                        orderId: row.number,
+                        sale: {
+                            saleCode: '',
+                            salePayer: "",
+                            name: "",
+                            tel: "",
+                            warehouse: row.warehousecode
+                        },
+                        store: {
+                            storeId: row.customerid,
+                            name: customerDetail?.customername ?? '',
+                            type: row.saleschannel,
+                            address: customerDetail?.customeraddress ?? '',
+                            taxId: "",
+                            tel: customerDetail?.customerphone ?? '',
+                            area: "",
+                            zone: ""
+                        },
+                        shipping: {
+                            default: '',
+                            shippingId: row.shippingchannel,
+                            address: row.shippingaddress,
+                            district: row.shippingdistrict,
+                            subDistrict: row.shippingsubdistrict,
+                            province: row.shippingprovince,
+                            postCode: row.shippingpostcode,
+                            latitude: "0.00",
+                            longtitude: "0.00",
+                        },
+                        note: '',
+                        latitude: '0.00',
+                        longitude: '0.00',
+                        status: row.status,
+                        statusTH: "",
+                        listProduct: listProduct,
+                        listPromotions: {},
+                        subtotal: 0,
+                        discount: Number(row?.discount || 0).toFixed(2),
+                        vat: parseFloat((row.amount - row.amount / 1.07).toFixed(2)),
+                        totalExVat: parseFloat((row.amount / 1.07).toFixed(2)),
+                        qr: 0,
+                        total: parseFloat(row.amount),
+                        paymentMethod: '',
+                        paymentStatus: row.paymentstatus,
+                        reference: '',
+                        period: '',
+                    }
+                    orderMongo.push(dataTran)
+                    Ordermongo.create(dataTran)
                 }
-
-
-
-
-
             }
 
 
             // console.log(dataTran);
-            orderMongo.push(dataTran)
+            // orderMongo.push(dataTran)
 
         }
 
@@ -200,6 +275,7 @@ exports.addOrderToMongo = async (req, res) => {
             status: 200,
             message: 'addproduct success',
             data: orderMongo
+            // data : customerData
         })
 
 

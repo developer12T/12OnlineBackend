@@ -8,6 +8,6 @@ index
 const router = express.Router()
 
 router.get('/', index)
-router.get('/addOrderToMongo', addOrderToMongo)
+router.post('/addOrderToMongo', addOrderToMongo)
 
 module.exports = router

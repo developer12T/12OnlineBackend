@@ -1,5 +1,4 @@
 const mongoose = require('mongoose')
-const { dbCA } = require('../../config/db')
 
 const orderSaleSchema = new mongoose.Schema({
   saleCode: { type: String, require: true },
@@ -135,14 +134,14 @@ const orderSchema = new mongoose.Schema(
     status: {
       type: String,
       require: true,
-      enum: ['pending', 'completed', 'canceled', 'rejected'],
-      default: 'pending'
+      // enum: ['pending', 'completed', 'canceled', 'rejected'],
+      // default: 'pending'
     },
     statusTH: {
       type: String,
       require: true,
-      enum: ['รอนำเข้า', 'สำเร็จ', 'ยกเลิก', 'ถูกปฏิเสธ','รอชำระ'],
-      default: 'รอนำเข้า'
+      // enum: ['รอนำเข้า', 'สำเร็จ', 'ยกเลิก', 'ถูกปฏิเสธ','รอชำระ'],
+      // default: 'รอนำเข้า'
     },
     listProduct: [listOrderProductSchema],
     // listPromotions: [listOrderPromotionSchema],
@@ -191,7 +190,8 @@ const editOrderSchema = mongoose.Schema({
 
 module.exports = conn => {
   return {
-    Order: conn.model('Order', orderSchema) ,
-    OrderHisLog : conn.model('editOrderLog', editOrderSchema,'editOrderLog') ,
+    // OrderOld: conn.model('OrderOld', orderSchema,'OrderOld') ,
+    // OrderHisLog : conn.model('editOrderLog', editOrderSchema,'editOrderLog') ,
+    Ordermongo: conn.model('Order', orderSchema)
   }
 }
