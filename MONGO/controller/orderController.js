@@ -1,5 +1,6 @@
 const orderModel = require('../../MONGO/models/orderMongo')
 const OrderOldModel = require('../../MONGO/models/orderMongoOld')
+const customerModel = require('../../MONGO/models/customerMongo')
 const { OrderHis, OrderDetailHis, Order, OrderDetail } = require('../../zort/model/Order')
 const { Customer } = require('../../zort/model/Customer')
 const { Product } = require('../../zort/model/Product')
@@ -288,9 +289,10 @@ exports.addOrderToMongo = async (req, res) => {
 
 exports.addOrderAmazeMongo = async (req, res) => {
     try {
-
+        const { Ordermongo } = getModelsByChannel(channel, res, OrderOldModel)
+        const { CustomerMongo } = getModelsByChannel(channel, res, customerModel)
         const dataAmaze = await orderAmazeAll();
-
+        
         if (!dataAmaze || !dataAmaze.data) {
             return res.status(400).json({ message: "ข้อมูลไม่ถูกต้อง" });
         }
@@ -303,7 +305,10 @@ exports.addOrderAmazeMongo = async (req, res) => {
         for (const order of orders) {
 
             // 2.ตรวจสอบข้อมูล
-            const existingOrder = await Order.findOne({ where: { number: order.order_number } }) || await OrderHis.findOne({ where: { number: order.order_number } });
+            // const existingOrder = await Order.findOne({ where: { number: order.order_number } }) || await OrderHis.findOne({ where: { number: order.order_number } });
+
+            const existingOrder = await Ordermongo.findOne({orderId:order.order_number})
+
 
             if (!existingOrder) {
                 const createdDateUTC = order.created_at
@@ -334,14 +339,16 @@ exports.addOrderAmazeMongo = async (req, res) => {
                 const billing = order.billing_address || {};
 
                 let customercode = ''
-                let customer = await Customer.findOne({ where: { customeriderp: order.customer_id } });
+                // let customer = await Customer.findOne({ where: { customeriderp: order.customer_id } });
+                let customer = await CustomerMongo.findOne({customeriderp: order.customer_id})
 
                 const customerEmail = order.billing_address?.email || "";
                 const customerTaxId = order.billing_address?.tax_id || "";
                 const statusPrintInv = customerTaxId ? "TaxInvoice" : "";
 
                 if (!customer) {
-                    customer = await Customer.create({
+                    // customer = await Customer.create({
+                    customer = await CustomerMongo.create({    
                         customerid: newCustomerId,
                         customeriderp: order.customer_id,
                         customercode: customerTaxId ? '' : "OAMZ000000",
