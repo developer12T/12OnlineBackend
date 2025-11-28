@@ -18,8 +18,8 @@ const productSchema = mongoose.Schema({
     length: { type: Number, require: true },
     width: { type: Number, require: true },
     categoryid: { type: String, require: true },
-    category: { type: Number, require: true, default: 0 },
-    variationid: { type: Number, require: true, default: 0 },
+    category: { type: String },
+    variationid: { type: String },
     variant: { type: String, require: true },
     tag: { type: String, require: true },
     sharelink: { type: String, require: true },
@@ -35,6 +35,6 @@ const productSchema = mongoose.Schema({
 
 module.exports = (conn) => {
     return {
-        Product: conn.model('Product', productSchema),
+        ProductMongo: conn.model('productMongo', productSchema,'productMongo'),
     };
 };
