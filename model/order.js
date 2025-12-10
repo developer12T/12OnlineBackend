@@ -1,0 +1,122 @@
+const mongoose = require('mongoose')
+// const { dbCA } = require('../../config/db')
+
+// const listOrderProductSchema = new mongoose.Schema({
+//   auto_id: { type: String },
+//   id: { type: Number },
+//   numberOrder: { type: String },
+//   productid: { type: String },
+//   sku: { type: String },
+//   name: { type: String },
+//   procode: { type: String },
+//   number: { type: String },
+//   unittext: { type: String },
+//   pricepernumber: { type: Number },
+//   discount: { type: Number },
+//   discountamount: { type: Number },
+//   totalprice: { type: Number },
+//   producttype: { type: String },
+//   serialnolist: { type: String },
+//   expirylotlist: { type: String },
+//   skutype: { type: String },
+//   bundleid: { type: String },
+//   bundleitemid: { type: String },
+//   bundlenumber: { type: String },
+//   bundleCode: { type: String },
+//   bundleName: { type: String },
+//   integrationItemId: { type: String },
+//   integrationVariantId: { type: String }
+// })
+
+const listOrderProductSchema = new mongoose.Schema({
+  itemNumber: { type: Number },
+  id: { type: Number },
+  productid: { type: Number },
+  procode: { type: String },
+  sku: { type: String },
+  itemCode: { type: String },
+  unit: { type: String },
+  name: { type: String },
+  quantity: { type: Number },
+  discount: { type: Number },
+  discountChanel: { type: String },
+  pricePerUnitOri: { type: Number },
+  pricePerUnit: { type: Number },
+  totalprice: { type: Number }
+})
+
+const orderSchema = new mongoose.Schema(
+  {
+    id: { type: String },
+    cono: { type: String },
+    invno: { type: String },
+    ordertype: { type: String },
+    number: { type: String },
+    customerid: { type: String },
+    customername: { type: String },
+    customercode: { type: String },
+    customeridnumber: { type: String },
+    warehousecode: { type: String },
+    status: { type: String },
+    paymentstatus: { type: String },
+    marketplacename: { type: String },
+    marketplaceshippingstatus: { type: String },
+    marketplacepayment: { type: String },
+    shippingvat: { type: Number },
+    shippingchannel: { type: String },
+    shippingamount: { type: Number },
+    shippingdate: { type: String },
+    shippingdateString: { type: String },
+    shippingname: { type: String },
+    shippingaddress: { type: String },
+    shippingphone: { type: String },
+    shippingemail: { type: String },
+    shippingpostcode: { type: String },
+    shippingprovince: { type: String },
+    shippingdistrict: { type: String },
+    shippingsubdistrict: { type: String },
+    shippingstreetAddress: { type: String },
+    orderdate: { type: String },
+    orderdateString: { type: String },
+    paymentamount: { type: Number },
+    description: { type: String },
+    discount: { type: Number },
+    discountamount: { type: Number },
+    voucheramount: { type: Number },
+    platformdiscount_pretax: { type: Number },
+    platformdiscount_vat: { type: Number },
+    platformdiscount: { type: Number },
+    sellerdiscount: { type: Number },
+    saleschannel: { type: Number },
+    vattype: { type: Number },
+    vatpercent: { type: Number },
+    isCOD: { type: String },
+    createdatetime: { type: String },
+    createdatetimeString: { type: String },
+    updatedatetime: { type: String },
+    updatedatetimeString: { type: String },
+    amount: { type: Number },
+    vatamount: { type: Number },
+    totalproductamount: { type: Number },
+    currency: { type: String },
+    statusprint: { type: String },
+    totalprint: { type: Number },
+    statusprintinv: { type: String },
+    statusPrininvSuccess: { type: String },
+    createdAt: { type: Date, default: Date.now },
+    updatedAt: { type: Date, default: Date.now },
+    listProduct: [listOrderProductSchema]
+  },
+  {
+    timestamps: true
+  }
+)
+
+// const Order = dbCA.model('Order', orderSchema)
+// module.exports = { Order }
+
+module.exports = conn => {
+  return {
+    Order: conn.model('Order', orderSchema)
+  }
+}
