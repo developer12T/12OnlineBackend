@@ -1,11 +1,15 @@
 const orderModel = require('../../MONGO/models/orderMongo')
 const OrderOldModel = require('../../MONGO/models/orderMongoOld')
 const customerModel = require('../../MONGO/models/customerMongo')
-const { OrderHis, OrderDetailHis, Order, OrderDetail } = require('../../zort/model/Order')
-const { Customer } = require('../../zort/model/Customer')
-const { Product } = require('../../zort/model/Product')
+const productModel = require('../../MONGO/models/productMongo')
+const shippingModel = require('../../MONGO/models/shippingMongo')
+// const { OrderHis, OrderDetailHis, Order, OrderDetail } = require('../../zort/model/Order')
+// const { Customer } = require('../../zort/model/Customer')
+// const { Product } = require('../../zort/model/Product')
 const { Op } = require('sequelize');
 const { getModelsByChannel } = require('../../authen/middleware/channel')
+const orderAmazeAll = require('../../zort/dataZort/allOrderAmaze');
+
 
 exports.index = async (req, res) => {
     try {
@@ -289,10 +293,16 @@ exports.addOrderToMongo = async (req, res) => {
 
 exports.addOrderAmazeMongo = async (req, res) => {
     try {
+        const channel = req.headers['x-channel']
+
         const { Ordermongo } = getModelsByChannel(channel, res, OrderOldModel)
         const { CustomerMongo } = getModelsByChannel(channel, res, customerModel)
+        const { ProductMongo } = getModelsByChannel(channel, res, productModel)
+        const { ShippingMongo } = getModelsByChannel(channel, res, shippingModel)
         const dataAmaze = await orderAmazeAll();
-        
+
+        // console.log('dataAmaze',dataAmaze)
+
         if (!dataAmaze || !dataAmaze.data) {
             return res.status(400).json({ message: "ข้อมูลไม่ถูกต้อง" });
         }
@@ -307,7 +317,7 @@ exports.addOrderAmazeMongo = async (req, res) => {
             // 2.ตรวจสอบข้อมูล
             // const existingOrder = await Order.findOne({ where: { number: order.order_number } }) || await OrderHis.findOne({ where: { number: order.order_number } });
 
-            const existingOrder = await Ordermongo.findOne({orderId:order.order_number})
+            const existingOrder = await Ordermongo.findOne({ orderId: order.order_number })
 
 
             if (!existingOrder) {
@@ -340,7 +350,7 @@ exports.addOrderAmazeMongo = async (req, res) => {
 
                 let customercode = ''
                 // let customer = await Customer.findOne({ where: { customeriderp: order.customer_id } });
-                let customer = await CustomerMongo.findOne({customeriderp: order.customer_id})
+                let customer = await CustomerMongo.findOne({ customeriderp: order.customer_id })
 
                 const customerEmail = order.billing_address?.email || "";
                 const customerTaxId = order.billing_address?.tax_id || "";
@@ -348,7 +358,7 @@ exports.addOrderAmazeMongo = async (req, res) => {
 
                 if (!customer) {
                     // customer = await Customer.create({
-                    customer = await CustomerMongo.create({    
+                    customer = await CustomerMongo.create({
                         customerid: newCustomerId,
                         customeriderp: order.customer_id,
                         customercode: customerTaxId ? '' : "OAMZ000000",
@@ -365,16 +375,22 @@ exports.addOrderAmazeMongo = async (req, res) => {
                         createddate: formatDate(order.created_at),
                     });
                 } else {
+
+                    // ถ้าไม่มี customeridnumber แต่ order มีเลขภาษี
                     if (!customer.customeridnumber && customerTaxId) {
-                        await customer.update({ customeridnumber: customerTaxId });
-                        await customer.update({ customercode: null });
+                        customer.customeridnumber = customerTaxId;
+                        customer.customercode = null;          // ตั้งเป็น null เพราะตอนนี้มี TaxID แล้ว
+                        await customer.save();                 // บันทึกลง DB
                     }
+
+                    // ถ้าไม่มี TaxID อยู่ดี -> ใช้ OAMZ000000
                     if (!customer.customeridnumber) {
-                        await customer.update({ customercode: "OAMZ000000" });
+                        customer.customercode = "OAMZ000000";
+                        await customer.save();
                     }
-                    if (customer) {
-                        customercode = customer.customercode || ''
-                    }
+
+                    // เก็บค่าที่ใช้ออกไป
+                    customercode = customer.customercode || '';
                 }
                 if (customerTaxId) {
                     customersToUpdate.push({
@@ -392,7 +408,7 @@ exports.addOrderAmazeMongo = async (req, res) => {
                 }
 
                 // test add shipping address
-                let shippingAddress = await ShippingAddress.create({
+                let shippingAddress = await ShippingMongo.create({
                     shi_customerid: customer ? customer.customerid : newCustomerId,
                     order_id: newOrderId,
                     shippingname: order.billing_address?.name || order.customer_name,
@@ -405,7 +421,37 @@ exports.addOrderAmazeMongo = async (req, res) => {
                 });
 
                 // test add order
-                const newOrder = await Order.create({
+                // const newOrder = await Order.create({
+
+                let listProduct = []
+
+                for (const orderPackage of order.order_packages) {
+                    for (const orderLine of orderPackage.order_items) {
+                        const product = await ProductMongo.findOne({ sku: orderLine.sku });
+                        // console.log('orderLine', orderLine);
+                        if (!product) {
+                            console.warn(`Not Found SKU: ${orderLine.sku}`);
+                            continue;
+                        }
+                        // test add order detail
+                        listProduct.push({
+                            id: newOrderId,
+                            numberOrder: order.order_number,
+                            productid: product.id,
+                            sku: orderLine.sku,
+                            name: product.name,
+                            pricepernumber: orderLine.unit_price,
+                            totalprice: orderLine.grand_total,
+                            number: orderLine.quantity_ordered,
+                            unittext: product.unittext,
+                            discountamount: orderLine.sub_total - orderLine.grand_total,
+                        });
+
+                        console.log(`Added Order Detail SKU: ${orderLine.sku}`);
+                    }
+                }
+
+                const newOrder = await Ordermongo.create({
                     id: newOrderId,
                     number: order.order_number,
                     cono: 1,
@@ -436,6 +482,7 @@ exports.addOrderAmazeMongo = async (req, res) => {
                     shippingstreetAddress: order.order_address?.address || "",
                     orderdate: finalDate,
                     orderdateString: formatDate(order.created_at),
+                    listProduct: listProduct,
                     paymentamount: '0',
                     description: '',
                     discount: '0',
@@ -457,31 +504,7 @@ exports.addOrderAmazeMongo = async (req, res) => {
                     statusprintinv: statusPrintInv,
                 });
 
-                for (const orderPackage of order.order_packages) {
-                    for (const orderLine of orderPackage.order_items) {
-                        const product = await Product.findOne({ where: { sku: orderLine.sku } });
-                        // console.log('orderLine', orderLine);
-                        if (!product) {
-                            console.warn(`Not Found SKU: ${orderLine.sku}`);
-                            continue;
-                        }
-                        // test add order detail
-                        await OrderDetail.create({
-                            id: newOrder.id,
-                            numberOrder: newOrder.number,
-                            productid: product.id,
-                            sku: orderLine.sku,
-                            name: product.name,
-                            pricepernumber: orderLine.unit_price,
-                            totalprice: orderLine.grand_total,
-                            number: orderLine.quantity_ordered,
-                            unittext: product.unittext,
-                            discountamount: orderLine.sub_total - orderLine.grand_total,
-                        });
 
-                        console.log(`Added Order Detail SKU: ${orderLine.sku}`);
-                    }
-                }
             }
         }
 
@@ -495,3 +518,6 @@ exports.addOrderAmazeMongo = async (req, res) => {
         res.status(500).json({ status: '501', message: error.message })
     }
 }
+
+
+// exports.addOrderAmazeMongo = async (req, res) => {

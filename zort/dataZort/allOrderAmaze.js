@@ -19,7 +19,7 @@ const orderAmazeAll = async (req, res) => {
 
         const accessToken = loginResponse.data.data.access_token;
         console.log('Login successful, token obtained');
-
+        console.log("accessToken",accessToken)
         // 2. ใช้ access_token เรียก order API
         const orderResponse = await axios.get(process.env.urlAmaze + '/open-console/api/v2/client/order?status=ready_to_ship', {
             headers: {
