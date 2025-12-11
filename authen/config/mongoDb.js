@@ -1,7 +1,7 @@
 const mongoose = require('mongoose')
 require('dotenv').config()
 
-const dbCA_UAT = mongoose.createConnection(process.env.CA_DB_URI_UAT)
+const dbCA_UAT = mongoose.createConnection(process.env.ONLINE_DATABASE)
 
 
 dbCA_UAT.on('connected', () => console.log('Connected to Cash DB UAT'))
