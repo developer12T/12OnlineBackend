@@ -4,7 +4,7 @@ const {
   insert,
   removeOrder,
 
-} = require('../../controllers/oder.controller')
+} = require('../../controllers/order.controller')
 
 const router = express.Router()
 

@@ -1,11 +1,11 @@
 const express = require('express')
 const {
- getOrderBento
-} = require('../../controllers/order.controller')
+ sysnceProductBento
+} = require('../../controllers/product.controller')
 
 const router = express.Router()
 
-router.get('/getOrder', getOrderBento);
+router.get('/sysnceProductBento', sysnceProductBento);
 
 // router.post('/insert', getOrder)
 module.exports = router
