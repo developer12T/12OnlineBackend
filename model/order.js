@@ -1,32 +1,4 @@
 const mongoose = require('mongoose')
-// const { dbCA } = require('../../config/db')
-
-// const listOrderProductSchema = new mongoose.Schema({
-//   auto_id: { type: String },
-//   id: { type: Number },
-//   numberOrder: { type: String },
-//   productid: { type: String },
-//   sku: { type: String },
-//   name: { type: String },
-//   procode: { type: String },
-//   number: { type: String },
-//   unittext: { type: String },
-//   pricepernumber: { type: Number },
-//   discount: { type: Number },
-//   discountamount: { type: Number },
-//   totalprice: { type: Number },
-//   producttype: { type: String },
-//   serialnolist: { type: String },
-//   expirylotlist: { type: String },
-//   skutype: { type: String },
-//   bundleid: { type: String },
-//   bundleitemid: { type: String },
-//   bundlenumber: { type: String },
-//   bundleCode: { type: String },
-//   bundleName: { type: String },
-//   integrationItemId: { type: String },
-//   integrationVariantId: { type: String }
-// })
 
 const listOrderProductSchema = new mongoose.Schema({
   itemNumber: { type: Number },
@@ -87,7 +59,7 @@ const orderSchema = new mongoose.Schema(
     platformdiscount_vat: { type: Number },
     platformdiscount: { type: Number },
     sellerdiscount: { type: Number },
-    saleschannel: { type: Number },
+    saleschannel: { type: String },
     vattype: { type: Number },
     vatpercent: { type: Number },
     isCOD: { type: String },
