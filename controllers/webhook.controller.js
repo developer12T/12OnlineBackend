@@ -36,15 +36,14 @@ exports.getOrder = async (req, res) => {
     }
 
     // ต้องตอบ 200 / 201 ให้เร็ว
-    res.status(200).json({ success: true })
+    res.status(200).json({ success: true, payload: payload })
   } catch (err) {
     console.error('Webhook error:', err)
     res.status(500).json({ success: false })
   }
 }
 
-const TARGET_WEBHOOK_URL =
-  'http://localhost:8383/online/bento/webhook/order_paid'
+const TARGET_WEBHOOK_URL = 'http://localhost:8383/online/bento/webhook/ship'
 
 exports.tigger = async (req, res) => {
   try {
