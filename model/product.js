@@ -1,5 +1,18 @@
 const mongoose = require('mongoose')
 
+const listProductVariantSchema = new mongoose.Schema({
+  product_variant_id: { type: Number },
+  product_id: { type: Number },
+  product_name: { type: String },
+  name: { type: String },
+  sku: { type: String },
+  barcode: { type: String },
+  price: { type: Number },
+  seq: { type: Number },
+  updated_at: { type: String }
+})
+
+
 const productSchema = new mongoose.Schema({
   id: { type: Number },
   store_id: { type: Number },
@@ -17,17 +30,6 @@ const productSchema = new mongoose.Schema({
   product_variant: [listProductVariantSchema]
 })
 
-const listProductVariantSchema = new mongoose.Schema({
-  product_variant_id: { type: Number },
-  product_id: { type: Number },
-  product_name: { type: String },
-  name: { type: String },
-  sku: { type: String },
-  barcode: { type: String },
-  price: { type: Number },
-  seq: { type: Number },
-  updated_at: { type: String }
-})
 
 module.exports = conn => {
   return {
