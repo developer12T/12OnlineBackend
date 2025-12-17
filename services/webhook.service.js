@@ -49,25 +49,7 @@ exports.handleOrderPaid = async data => {
   // 3️⃣ ถ้าไม่เจอ → สร้างใหม่ (Paid มาก่อน Created)
   if (!order) {
     await Order.create({
-      id: orderId,
-      number: orderNumber,
-      customerid: String(data.customerid),
-      customername: data.customername,
-      customercode: data.customercode,
-      warehousecode: data.warehousecode,
-      status: data.status,
-      paymentstatus: 'Paid',
-      saleschannel: data.saleschannel,
-      orderdate: data.orderdate,
-      orderdateString: data.orderdateString,
-      createdatetime: data.createdatetime,
-      createdatetimeString: data.createdatetimeString,
-      updatedatetime: data.updatedatetime,
-      updatedatetimeString: data.updatedatetimeString,
-      amount: data.amount,
-      vatamount: data.vatamount,
-      totalproductamount: data.totalproductamount || data.amount,
-      currency: data.currency,
+      ...data,
       listProduct
     })
 
