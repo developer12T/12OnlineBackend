@@ -5,6 +5,6 @@ const bentoRoute = require('./bento/index')
 const router = express.Router()
 
 router.use('/api', route)
-router.use('/bento/api', bentoRoute)
+router.use('/bento', bentoRoute)
 
 module.exports = router
