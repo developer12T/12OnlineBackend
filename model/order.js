@@ -20,8 +20,8 @@ const listOrderProductSchema = new mongoose.Schema({
 const orderSchema = new mongoose.Schema(
   {
     id: { type: String },
-    co: { type: String, default : '' },
-    invo: { type: String, default : '' },
+    cono: { type: String, default : '' },
+    invno: { type: String, default : '' },
     ordertype: { type: String },
     number: { type: String },
     customerid: { type: String },
@@ -73,7 +73,7 @@ const orderSchema = new mongoose.Schema(
     vatamount: { type: Number },
     totalproductamount: { type: Number },
     currency: { type: String },
-    statusprint: { type: Boolean , default : false },
+    statusprint: { type: String, default : '' },
     totalprint: { type: Number },
     statusprintinv: { type: String, default : '' },
     statusPrininvSuccess: { type: String , default : ''},
