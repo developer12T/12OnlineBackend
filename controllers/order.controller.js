@@ -8,7 +8,7 @@ const { getModelsByChannel } = require('../authen/middleware/channel')
 const generateUniqueId = require('../middleware/order');
 const InvReprint = require('../zort/subController/InvReprint');
 const receiptWaitTab = require('../zort/subController/ReceiptWaitTab');
-
+const receiptSuccessTab = require('../zort/subController/receiptSuccessTab');
 
 exports.getOrder = async (req, res) => {
   try {
@@ -27,7 +27,7 @@ exports.getOrder = async (req, res) => {
       if (tab == 'wait-tab') {
         receiptWaitTab(res,channel).then(orders => { res.json(orders); })
       } else if (tab == 'success-tab') {
-        receiptSuccessTab(res).then(orders => { res.json(orders); })
+        receiptSuccessTab(res,channel).then(orders => { res.json(orders); })
       } else if (tab == 'payment-tab') {
         ReceiptWaitTabPayment(res).then(orders => { res.json(orders) })
       }

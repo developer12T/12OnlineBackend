@@ -54,7 +54,7 @@ async function receiptWaitTab(res, channel) {
 
                 ).select("customername customerid customeriderp customercode")
             }
-            const cuss = row?.customername || '';
+            const cuss = cusdata?.customername || '';
 
 
             const items = itemData.listProduct.map(item => ({
