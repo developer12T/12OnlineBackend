@@ -1,73 +1,63 @@
 const express = require('express');
 const getOrder = express.Router();
+
+const orderModel = require('../../model/order')
+const customerModel = require('../../model/customer')
 const { Op } = require('sequelize');
-const { Order, OrderDetail } = require('../model/Order');
-const { Customer } = require('../model/Customer');
+// const { Order, OrderDetail } = require('../model/Order');
+// const { Customer } = require('../model/Customer');
 const moment = require('moment');
 require('moment/locale/th');
 const currentDate = moment().utcOffset(7).format('YYYY-MM-DD');
 // function today() {
 const currentDateTime = moment().utcOffset(7).format('YYYY-MM-DDTHH:mm');
 // }
+const { getModelsByChannel } = require('../../authen/middleware/channel')
 
-async function receiptWaitTab(res) {
+
+
+async function receiptWaitTab(res, channel) {
     try {
-        const data = await Order.findAll({
-            where: {
-                statusprint: '000',
-                statusPrininvSuccess: '000',
-                status: {
-                    [Op.not]: 'Voided'
-                },
-                [Op.or]: [
-                    { paymentstatus: 'PAY_ON_ACCEPTANCE' },
-                    { paymentstatus: 'Paid' }
-                ]
-            }
-        });
+        const { Order } = getModelsByChannel(channel, res, orderModel)
+        const { Customer } = getModelsByChannel(channel, res, customerModel)
+
+        const data = await Order.find({
+            statusprint: '000',
+            statusPrininvSuccess: '000',
+            status: { $ne: 'Voided' },
+            $or: [
+                { paymentstatus: 'PAY_ON_ACCEPTANCE' },
+                { paymentstatus: 'Paid' }
+            ]
+        })
 
         const orders = [];
 
-        for (let i = 0; i < data.length; i++) {
-            const itemData = await OrderDetail.findAll({
-                attributes: ['productid', 'sku', 'name', 'number', 'pricepernumber', 'totalprice'],
-                where: { id: data[i].id }
-            });
 
-         let cusdata
-          if((data[i].customeriderp === 'OLAZ000000' && data[i].saleschannel === 'Lazada') || data[i].customeriderp === 'OAMZ000000' && data[i].saleschannel === 'Amaze'){
-             cusdata = await Customer.findAll({
-                attributes: ['customername', 'customerid', 'customeriderp', 'customercode'],
-                // where: {
-                //     [Op.or]: [
-                //         { customerid: data[i].saleschannel === "Makro" ? null : data[i].customerid },
-                //         { customeriderp: data[i].saleschannel === "Makro" ? data[i].customerid : null }
-                //     ]
-                // }
-                where: {
-                    // customercode: data[i].customeriderp 
-                    customerid: data[i].customerid
-                }
-            });
-          }else{
-             cusdata = await Customer.findAll({
-                attributes: ['customername', 'customerid', 'customeriderp', 'customercode'],
-                // where: {
-                //     [Op.or]: [
-                //         { customerid: data[i].saleschannel === "Makro" ? null : data[i].customerid },
-                //         { customeriderp: data[i].saleschannel === "Makro" ? data[i].customerid : null }
-                //     ]
-                // }
-                where: {
-                    customercode: data[i].customeriderp 
-                }
-            });
-          }
-           
-            const cuss = cusdata[0]?.customername || '';
-            // console.log('cuss', cuss);
+        for (const row of data) {
 
-            const items = itemData.map(item => ({
+            const itemData = data.find(item => item.id === row.id)
+
+            // console.log("itemData", itemData)
+
+            let cusdata
+            if (row.customeriderp === 'OLAZ000000' && row.saleschannel === 'Lazada' ||
+                row.customeriderp === 'OAMZ000000' && row.saleschannel === 'Amaze'
+            ) {
+                cusdata = await Customer.findOne(
+                    { customerid: row.customerid },
+
+                ).select("customername customerid customeriderp customercode")
+            } else {
+                cusdata = await Customer.findOne(
+                    { customerid: row.customerid },
+
+                ).select("customername customerid customeriderp customercode")
+            }
+            const cuss = row?.customername || '';
+
+
+            const items = itemData.listProduct.map(item => ({
                 productid: item.productid,
                 sku: item.sku.split('_')[0],
                 unit: item.sku.split('_')[1],
@@ -77,57 +67,60 @@ async function receiptWaitTab(res) {
                 totalprice: item.totalprice
             }));
 
-            const totalprint = data[i].totalprint ?? 0;
-            const taxInStatus = data[i].statusprintinv === 'TaxInvoice' ? 'ขอใบกำกับภาษี' : '';
+
+            const totalprint = row.totalprint ?? 0;
+            const taxInStatus = row.statusprintinv === 'TaxInvoice' ? 'ขอใบกำกับภาษี' : '';
             const statusText = {
                 'Success': 'สำเร็จ',
                 'Voided': 'ยกเลิก',
                 'Waiting': 'รอส่ง',
                 'Pending': 'รอโอน'
-            }[data[i].status] || 'พบข้อผิดพลาด';
+            }[row.status] || 'พบข้อผิดพลาด';
+
 
             const paymentstatusText = {
                 'Paid': 'ชำระแล้ว',
                 'Voided': 'ยกเลิก',
                 'Pending': 'รอชำระ'
-            }[data[i].paymentstatus] || 'พบข้อผิดพลาด';
+            }[row.paymentstatus] || 'พบข้อผิดพลาด';
 
-            const isCOD = data[i].isCOD == '1' ? 'เก็บปลายทาง' : 'ไม่เก็บปลายทาง';
+            const isCOD = row.isCOD == '1' ? 'เก็บปลายทาง' : 'ไม่เก็บปลายทาง';
 
             const order = {
-                id: data[i].id,
-                cono: data[i].cono,
-                invno: data[i].invno,
-                orderdate: data[i].orderdate,
-                orderdateString: data[i].orderdateString,
+                id: row.id,
+                cono: row.cono,
+                invno: row.invno,
+                orderdate: row.orderdate,
+                orderdateString: row.orderdateString,
                 printdate: currentDate,
                 printdatetime: currentDateTime,
-                number: data[i].number,
-                customerid: data[i].customerid,
-                status: data[i].status,
+                number: row.number,
+                customerid: row.customerid,
+                status: row.status,
                 statusText: statusText,
-                paymentstatus: data[i].paymentstatus,
+                paymentstatus: row.paymentstatus,
                 paymentstatusText: paymentstatusText,
-                amount: data[i].amount,
-                vatamount: data[i].vatamount,
-                shippingchannel: data[i].shippingchannel,
-                shippingamount: data[i].shippingamount,
-                shippingstreetAddress: data[i].shippingstreetAddress,
-                shippingsubdistrict: data[i].shippingsubdistrict,
-                shippingdistrict: data[i].shippingdistrict,
-                shippingprovince: data[i].shippingprovince,
-                shippingpostcode: data[i].shippingpostcode,
-                createdatetime: data[i].createdatetime,
-                statusprint: data[i].statusprint,
-                statusprintinv: data[i].statusprintinv,
+                amount: row.amount,
+                vatamount: row.vatamount,
+                shippingchannel: row.shippingchannel,
+                shippingamount: row.shippingamount,
+                shippingstreetAddress: row.shippingstreetAddress,
+                shippingsubdistrict: row.shippingsubdistrict,
+                shippingdistrict: row.shippingdistrict,
+                shippingprovince: row.shippingprovince,
+                shippingpostcode: row.shippingpostcode,
+                createdatetime: row.createdatetime,
+                statusprint: row.statusprint,
+                statusprintinv: row.statusprintinv,
                 invstatus: taxInStatus,
                 totalprint: totalprint,
-                saleschannel: data[i].saleschannel,
+                saleschannel: row.saleschannel,
                 item: items,
                 customer: cuss,
                 isCOD: isCOD
             };
             orders.push(order);
+
         }
         return orders;
     } catch (error) {
