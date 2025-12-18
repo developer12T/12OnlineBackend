@@ -19,9 +19,14 @@ const listOrderProductSchema = new mongoose.Schema({
 
 const orderSchema = new mongoose.Schema(
   {
-    id: { type: String },
-    cono: { type: String, default : '' },
-    invno: { type: String, default : '' },
+    // orderId: {
+    //   type: String,
+    //   required: true,
+    //   unique: true
+    // },
+    id: { type: String, unique: true },
+    cono: { type: String, default: '' },
+    invno: { type: String, default: '' },
     ordertype: { type: String },
     number: { type: String },
     customerid: { type: String },
@@ -50,7 +55,7 @@ const orderSchema = new mongoose.Schema(
     shippingstreetAddress: { type: String },
     orderdate: { type: String },
     orderdateString: { type: String },
-    paymentamount: { type: Number , default : 0 },
+    paymentamount: { type: Number, default: 0 },
     description: { type: String },
     discount: { type: Number },
     discountamount: { type: Number },
@@ -60,8 +65,8 @@ const orderSchema = new mongoose.Schema(
     platformdiscount: { type: Number },
     sellerdiscount: { type: Number },
     saleschannel: { type: String },
-    shippingamount_pretax : { type: Number },
-    shippingamount_vat : { type: Number },
+    shippingamount_pretax: { type: Number },
+    shippingamount_vat: { type: Number },
     vattype: { type: Number },
     vatpercent: { type: Number },
     isCOD: { type: String },
@@ -73,10 +78,10 @@ const orderSchema = new mongoose.Schema(
     vatamount: { type: Number },
     totalproductamount: { type: Number },
     currency: { type: String },
-    statusprint: { type: String, default : '' },
+    statusprint: { type: String, default: '' },
     totalprint: { type: Number },
-    statusprintinv: { type: String, default : '' },
-    statusPrininvSuccess: { type: String , default : ''},
+    statusprintinv: { type: String, default: '' },
+    statusPrininvSuccess: { type: String, default: '' },
     createdAt: { type: Date, default: Date.now },
     updatedAt: { type: Date, default: Date.now },
     listProduct: [listOrderProductSchema]

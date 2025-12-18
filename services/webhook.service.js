@@ -8,7 +8,7 @@ async function handleOrderCreated (data) {
 }
 exports.handleOrderPaid = async data => {
   const channel = 'uat'
-//   const channel = 'uat'
+  //   const channel = 'uat'
   const { Order } = getModelsByChannel(channel, null, orderModel)
 
   if (!data || data.paymentstatus !== 'Paid') {
@@ -48,11 +48,17 @@ exports.handleOrderPaid = async data => {
 
   // 3️⃣ ถ้าไม่เจอ → สร้างใหม่ (Paid มาก่อน Created)
   if (!order) {
-    await Order.create({
-      ...data,
-      listProduct
-    })
-
+    await Order.updateOne(
+      { id: orderId },
+      {
+        $setOnInsert: {
+          id: orderId,
+          ...data,
+          listProduct
+        }
+      },
+      { upsert: true }
+    )
     console.log(`[Webhook] Order ${orderNumber} created (Paid)`)
     return
   }
