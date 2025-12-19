@@ -9,6 +9,8 @@ const generateUniqueId = require('../middleware/order');
 const InvReprint = require('../zort/subController/InvReprint');
 const receiptWaitTab = require('../zort/subController/ReceiptWaitTab');
 const receiptSuccessTab = require('../zort/subController/receiptSuccessTab');
+const ReceiptWaitTabPayment = require('../zort/subController/ReceiptWaitTabPayment');
+
 
 exports.getOrder = async (req, res) => {
   try {
@@ -29,7 +31,7 @@ exports.getOrder = async (req, res) => {
       } else if (tab == 'success-tab') {
         receiptSuccessTab(res,channel).then(orders => { res.json(orders); })
       } else if (tab == 'payment-tab') {
-        ReceiptWaitTabPayment(res).then(orders => { res.json(orders) })
+        ReceiptWaitTabPayment(res,channel).then(orders => { res.json(orders) })
       }
     } else if (page == 'all') {
       AllOrderTab(res).then(orders => { res.json(orders); })
