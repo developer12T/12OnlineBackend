@@ -61,8 +61,7 @@ exports.getOrder = async (req, res) => {
       // รับพารามิเตอร์วันที่จาก request body
       const { startDate, endDate } = req.body;
       const dateFilter = { startDate, endDate };
-
-      InvReprint(res, dateFilter).then(orders => { res.json(orders); })
+      InvReprint(res,channel, dateFilter).then(orders => { res.json(orders); })
     }
 
     // res.status(200).json({

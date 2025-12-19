@@ -137,8 +137,6 @@ async function M3SuccessTab(res, channel) {
             updatedAt: { $gte: threeMonthsAgo }
         }).sort({ updatedAt: -1 })
 
-        const customerId = [...new Set(dataOrder.flatMap(item => item.customerid))]
-
         const statusMapping = {
             Success: 'สำเร็จ',
             Voided: 'ยกเลิก',
