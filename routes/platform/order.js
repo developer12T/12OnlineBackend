@@ -1,6 +1,6 @@
 const express = require('express')
 const {
-  getOrder,
+  // getOrder,
   insert,
   removeOrder,
   getData
@@ -8,7 +8,7 @@ const {
 
 const router = express.Router()
 
-router.post('/all', getOrder)
+// router.post('/all', getOrder)
 router.post('/insert', insert)
 router.delete('/delete', removeOrder)
 
