@@ -78,10 +78,10 @@ const orderSchema = new mongoose.Schema(
     vatamount: { type: Number },
     totalproductamount: { type: Number },
     currency: { type: String },
-    statusprint: { type: String, default: '' },
+    statusprint: { type: String, default: '000' },
     totalprint: { type: Number },
     statusprintinv: { type: String, default: '' },
-    statusPrininvSuccess: { type: String, default: '' },
+    statusPrininvSuccess: { type: String, default: '000' },
     createdAt: { type: Date, default: Date.now },
     updatedAt: { type: Date, default: Date.now },
     listProduct: [listOrderProductSchema]

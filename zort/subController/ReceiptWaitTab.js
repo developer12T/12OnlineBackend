@@ -30,7 +30,7 @@ async function receiptWaitTab(res, channel) {
                 { paymentstatus: 'Paid' }
             ]
         })
-
+        // console.log("data",data)
         const orders = [];
 
 
