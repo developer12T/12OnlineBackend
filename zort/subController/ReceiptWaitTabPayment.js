@@ -23,9 +23,8 @@ async function ReceiptWaitTabPayment(res,channel) {
             statusprint: '000',
             statusPrininvSuccess: '000',
             status: { $ne: 'Voided' },
-            $or: [
-                { paymentstatus: 'Paid' }
-            ]
+            paymentstatus : { $ne: 'Paid' },
+
         })
 
         const orders = [];

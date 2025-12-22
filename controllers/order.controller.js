@@ -37,6 +37,7 @@ exports.getOrder = async (req, res) => {
       if (tab == 'wait-tab') {
         receiptWaitTab(res,channel).then(orders => { res.json(orders); })
       } else if (tab == 'success-tab') {
+        console.log('success-tab')
         receiptSuccessTab(res,channel).then(orders => { res.json(orders); })
       } else if (tab == 'payment-tab') {
         ReceiptWaitTabPayment(res,channel).then(orders => { res.json(orders) })
@@ -70,7 +71,7 @@ exports.getOrder = async (req, res) => {
     // })
 
   } catch (error) {
-    res.status(500).json('invalid data')
+    // res.status(500).json('invalid data')
     console.log(error);
   }
 
@@ -267,12 +268,13 @@ exports.removeOrder = async (req, res) => {
 }
 
 
-exports.getData = async (req, res) => {
+exports.getDashboardData = async (req, res) => {
   try {
     const channel = req.headers['x-channel']
     const { Order } = getModelsByChannel(channel, res, orderModel)
     const { Customer } = getModelsByChannel(channel, res, customerModel)
     const { Product } = getModelsByChannel(channel, res, productModel)
+
 
     const orders = await Order.find()
     const grouped = orders.reduce((acc, order) => {
