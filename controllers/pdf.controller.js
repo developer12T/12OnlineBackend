@@ -1,7 +1,7 @@
 const fs = require('fs')
 const axios = require('axios')
 const PDFDocument = require('pdfkit')
-const { getDataPrintReceipt } = require('../middleware/getDataPrintReceipt')
+const { getDataPrintReceipt } = require('../middleware/erpAndM3')
 // ===============================
 // helper: call API
 // ===============================
@@ -52,16 +52,14 @@ async function generatePDF(checklist) {
   doc.pipe(fs.createWriteStream('invoice.pdf'))
 
   // Thai font
-  doc.registerFont('TH', './THSarabunNew.ttf')
+  doc.registerFont('TH', '../12OnlineBackend/controllers/THSarabunNew.ttf')
   doc.font('TH')
 
-  const url = 'http://192.168.2.97:8383/zort/order/OrderManage/getDataPrintReceipt'
-
   for (let i = 0; i < checklist.length; i++) {
-    const res = await fetchDataFromAPI(url, {
-      cutoff: 'print',
+
+    const res = await getDataPrintReceipt({
       list: checklist[i],
-      ...(i === checklist.length - 1 && { action: 'lastRowActionToDataErp' })
+      action: 'lastRowActionToDataErp'
     })
 
     const data = Array.isArray(res) ? res[0] : res
@@ -112,8 +110,9 @@ function table(doc, d) {
   doc.moveDown(0.3)
 
   d.list.forEach((it, i) => {
+    // console.log('it',it)
     doc.text(
-      `${i + 1}. ${it.name}  ${it.number}  ${it.sku.split('_')[1]}  ${it.pricepernumber.toFixed(2)}  ${it.totalprice.toFixed(2)}`
+      `${i + 1}. ${it.name}  ${it.number}  ${it.sku.split('_')[1]}  ${it.pricePerUnit.toFixed(2)}  ${it.totalprice.toFixed(2)}`
     )
   })
 
@@ -140,5 +139,10 @@ function sign(doc) {
 // ===============================
 // run
 // ===============================
-const checklist = process.argv[2]?.split(',') || []
+const checklist = ['13803516']
 generatePDF(checklist)
+
+
+module.exports = {
+  generatePDF
+}

@@ -3,60 +3,67 @@ const getOrder = express.Router();
 const { NumberSeries, NumberSeriesINV, COHead } = require('../model/order');
 const { Op, sequelize } = require('sequelize');
 
-getOrder.post('/getNumberSeries', async (req, res) => {
-  const series = req.body.series;
-  const seriesname = req.body.seriesname;
-  const seriestype = req.body.seriestype;
-  const companycode = req.body.companycode;
+async function getNumberSeries({
+  series,
+  seriesname,
+  seriestype,
+  companycode
+}) {
   try {
+
+    // ===== กรณีไม่ส่งเงื่อนไขครบ → ดึงทั้งหมด =====
     if (!series || !seriesname || !seriestype || !companycode) {
       const data = await NumberSeries.findAll({
         attributes: {
           exclude: ['id'],
         },
-      });
-      res.json(data);
-    } else {
-      const data = await NumberSeries.findAll({
-        attributes: {
-          exclude: ['id'],
-        },
-        where: {
-          [Op.or]: [
-            {
-              companycode: companycode,
-              series: series,
-              seriestype: seriestype,
-            },
-            {
-              seriesname: {
-                [Op.like]: '%${seriesname}%',
-              },
-            },
-          ],
-        },
-      });
-
-      res.json(data);
+      })
+      return data
     }
+
+    // ===== กรณีมีเงื่อนไข =====
+    const data = await NumberSeries.findAll({
+      attributes: {
+        exclude: ['id'],
+      },
+      where: {
+        [Op.or]: [
+          {
+            companycode: companycode,
+            series: series,
+            seriestype: seriestype,
+          },
+          {
+            seriesname: {
+              [Op.like]: `%${seriesname}%`,
+            },
+          },
+        ],
+      },
+    })
+
+    return data
+
   } catch (error) {
-    console.error(error);
-    res.json(error);
+    console.error(error)
+    throw error
   }
-}),
-getOrder.post('/getNumberSeriesINV', async (req, res) => {
-  const series = req.body.series;
-  const seriesname = req.body.seriesname;
-  const seriesyear = req.body.seriesyear;
-  const companycode = req.body.companycode;
+}
+
+async function getNumberSeriesINV({
+  series,
+  seriesname,
+  seriesyear,
+  companycode
+}) {
   try {
     if (!series || !seriesname || !seriesyear || !companycode) {
       const data = await NumberSeriesINV.findAll({
         attributes: {
           exclude: ['id'],
         },
-      });
-      res.json(data);
+      })
+      return data
     } else {
       const data = await NumberSeriesINV.findAll({
         attributes: {
@@ -71,54 +78,57 @@ getOrder.post('/getNumberSeriesINV', async (req, res) => {
             },
             {
               seriesname: {
-                [Op.like]: '%${seriesname}%',
+                [Op.like]: `%${seriesname}%`,
               },
             },
           ],
         },
-      });
+      })
 
       const trimmedData = data.map(item => ({
-        ...item.get({ plain: true }), 
-        prefixno: item.prefixno.trim() 
-      }));
+        ...item.get({ plain: true }),
+        prefixno: item.prefixno.trim()
+      }))
 
-      res.json(trimmedData);
+      return trimmedData
     }
   } catch (error) {
-    console.error(error);
-    res.json(error);
+    console.error(error)
+    throw error
   }
-}),
-  getOrder.post('/getInvNumber', async (req, res) => {
-    const ordertype = req.body.ordertype;
-    try {
-      if (!ordertype) {
-        const data = await COHead.findAll({
-          attributes: { exclude: ['id'] },
-          attributes: ['ordertype', 'customerordno'],
-          group: ['OAORTP','OACUOR']
-        });
-        res.json(data);
+}
 
-      } else {
-        const data = await COHead.findAll({
-          attributes: { exclude: ['id'] },
-          attributes: ['ordertype', 'customerordno'],
-          where: {
-            ordertype: ordertype,
-          },
-          limit: 1,
-          order: [
-            ['customerordno','DESC']
-          ]
-        });
+async function getInvNumber({ ordertype }) {
+  try {
+    if (!ordertype) {
+      const data = await COHead.findAll({
+        attributes: { exclude: ['id'] },
+        attributes: ['ordertype', 'customerordno'],
+        group: ['OAORTP', 'OACUOR']
+      })
+      return data
 
-        res.json(data);
-      }
-    } catch (error) {
-      console.error(error);
-      res.json(error);
+    } else {
+      const data = await COHead.findAll({
+        attributes: { exclude: ['id'] },
+        attributes: ['ordertype', 'customerordno'],
+        where: {
+          ordertype: ordertype,
+        },
+        limit: 1,
+        order: [
+          ['customerordno', 'DESC']
+        ]
+      })
+
+      return data
     }
-  }),
-  (module.exports = getOrder);
+  } catch (error) {
+    console.error(error)
+    throw error
+  }
+}
+
+module.exports = {
+  getInvNumber,getNumberSeriesINV,getNumberSeries
+}
