@@ -1,0 +1,108 @@
+[
+    {
+        "_id": {
+            "$oid": "6944337f94a09fafb66b6707"
+        },
+        "id": "13788516",
+        "__v": 0,
+        "amount": 158.75,
+        "cono": "",
+        "createdAt": {
+            "$date": "2025-12-18T17:01:51.970Z"
+        },
+        "createdatetime": "2025-12-16T17:23:49",
+        "createdatetimeString": "2025-12-16 17:23",
+        "currency": "THB",
+        "customercode": "OLAZ000000",
+        "customerid": "7937754",
+        "customeridnumber": "",
+        "customername": "ขายช่องทาง Lazada",
+        "description": "",
+        "discount": 27,
+        "discountamount": 0,
+        "invno": "",
+        "isCOD": "false",
+        "listProduct": [
+            {
+                "itemNumber": 1,
+                "id": 13788516,
+                "productid": 3238392,
+                "procode": "",
+                "sku": "10010906008_BAG_",
+                "itemCode": "10010906008_BAG",
+                "unit": "",
+                "name": "FaThai ฟ้าไทย น้ำก๋วยเตี๋ยวสำเร็จรูปเข้มข้น รสพะโล้ 350 กรัม (แพ็ค 6 ซอง)",
+                "quantity": 1,
+                "discount": 18,
+                "discountChanel": "",
+                "pricePerUnitOri": 180,
+                "pricePerUnit": 162,
+                "totalprice": 180,
+                "_id": {
+                    "$oid": "6944337f3ccfc79ed9e9c799"
+                }
+            },
+            {
+                "itemNumber": 2,
+                "id": 13788516,
+                "productid": 3238219,
+                "procode": "",
+                "sku": "10013901003_PCS_",
+                "itemCode": "10013901003_PCS",
+                "unit": "",
+                "name": "FaThai ฟ้าไทย ผงเขย่า รสบาร์บีคิว 100 กรัม (1ซอง)",
+                "quantity": 1,
+                "discount": 1.25,
+                "discountChanel": "",
+                "pricePerUnitOri": 25,
+                "pricePerUnit": 23.75,
+                "totalprice": 25,
+                "_id": {
+                    "$oid": "6944337f3ccfc79ed9e9c79a"
+                }
+            }
+        ],
+        "marketplacename": "Lazada",
+        "number": "1061990614685589",
+        "orderdate": "2025-12-16T17:23:49",
+        "orderdateString": "2025-12-16 17:23",
+        "paymentamount": 0,
+        "paymentstatus": "Paid",
+        "platformdiscount": 27,
+        "platformdiscount_pretax": 25.2336,
+        "platformdiscount_vat": 1.7664,
+        "saleschannel": "Lazada",
+        "sellerdiscount": 0,
+        "shippingaddress": "ร้านเตี๋ยวกะต๊าก ติดร้านทองโป่งเเยงนอก · โป่งแยง/ Pong Yaeng",
+        "shippingamount": 0,
+        "shippingamount_pretax": 0,
+        "shippingamount_vat": 0,
+        "shippingchannel": "Pickup: LEX TH, Delivery: LEX TH",
+        "shippingdate": "2025-12-18T10:14:08",
+        "shippingdateString": "2025-12-18 10:14",
+        "shippingdistrict": "แม่ริม",
+        "shippingemail": "",
+        "shippingname": "จุฑาสิกานต์ บงกชสิทธิวัฒน์",
+        "shippingphone": "0660802000944",
+        "shippingpostcode": "50180",
+        "shippingprovince": "เชียงใหม่",
+        "shippingstreetAddress": "ร้านเตี๋ยวกะต๊าก ติดร้านทองโป่งเเยงนอก · โป่งแยง/ Pong Yaeng",
+        "shippingsubdistrict": "",
+        "shippingvat": 1,
+        "status": "Shipped",
+        "statusPrininvSuccess": "",
+        "statusprint": "",
+        "statusprintinv": "",
+        "totalproductamount": 205,
+        "updatedAt": {
+            "$date": "2025-12-18T17:01:51.970Z"
+        },
+        "updatedatetime": "2025-12-18T10:14:21",
+        "updatedatetimeString": "2025-12-18 10:14",
+        "vatamount": 10.39,
+        "vatpercent": 7,
+        "vattype": 3,
+        "voucheramount": 27,
+        "warehousecode": "W0001"
+    }
+]
