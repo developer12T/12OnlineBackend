@@ -7,65 +7,67 @@ const productModel = require('../model/product')
 const { getModelsByChannel } = require('../authen/middleware/channel')
 const generateUniqueId = require('../middleware/order');
 const InvReprint = require('../zort/subController/InvReprint');
-// const receiptWaitTab = require('../zort/subController/ReceiptWaitTab');
-// const receiptSuccessTab = require('../zort/subController/receiptSuccessTab');
-
-// exports.getOrder = async (req, res) => {
-//   try {
-
-//     const channel = req.headers['x-channel']
-//     const { Order } = getModelsByChannel(channel, res, orderModel)
-//     const { Customer } = getModelsByChannel(channel, res, customerModel)
+const receiptWaitTab = require('../zort/subController/ReceiptWaitTab');
+const receiptSuccessTab = require('../zort/subController/receiptSuccessTab');
+const ReceiptWaitTabPayment = require('../zort/subController/ReceiptWaitTabPayment');
 
 
-//     var page = req.body.page;
-//     var tab = req.body.tab;
+exports.getOrder = async (req, res) => {
+  try {
+
+    const channel = req.headers['x-channel']
+    const { Order } = getModelsByChannel(channel, res, orderModel)
+    const { Customer } = getModelsByChannel(channel, res, customerModel)
+
+
+    var page = req.body.page;
+    var tab = req.body.tab;
 
 
 
-//     if (page == 'receipt') {
-//       if (tab == 'wait-tab') {
-//         receiptWaitTab(res,channel).then(orders => { res.json(orders); })
-//       } else if (tab == 'success-tab') {
-//         receiptSuccessTab(res,channel).then(orders => { res.json(orders); })
-//       } else if (tab == 'payment-tab') {
-//         ReceiptWaitTabPayment(res).then(orders => { res.json(orders) })
-//       }
-//     } else if (page == 'all') {
-//       AllOrderTab(res).then(orders => { res.json(orders); })
-//       // const data = await Order.findAll()
-//       // res.json(data)
-//     } else if (page == 'inv') {
-//       if (tab == 'wait-tab') {
-//         invtWaitTab(res).then(orders => { res.json(orders); })
-//       } else if (tab == 'success-tab') {
-//         invSuccessTab(res).then(orders => { res.json(orders); })
-//       }
-//     } else if (page == 'preparem3') {
-//       if (tab == 'wait-tab') {
-//         M3WaitTab(res).then(orders => { res.json(orders); })
-//       } else if (tab == 'success-tab') {
-//         M3SuccessTab(res).then(orders => { res.json(orders); })
-//       }
-//     } else if (page == 'reprint') {
-//       // รับพารามิเตอร์วันที่จาก request body
-//       const { startDate, endDate } = req.body;
-//       const dateFilter = { startDate, endDate };
+    if (page == 'receipt') {
+      if (tab == 'wait-tab') {
+        receiptWaitTab(res,channel).then(orders => { res.json(orders); })
+      } else if (tab == 'success-tab') {
+        receiptSuccessTab(res,channel).then(orders => { res.json(orders); })
+      } else if (tab == 'payment-tab') {
+        ReceiptWaitTabPayment(res,channel).then(orders => { res.json(orders) })
+      }
+    } else if (page == 'all') {
+      AllOrderTab(res).then(orders => { res.json(orders); })
+      // const data = await Order.findAll()
+      // res.json(data)
+    } else if (page == 'inv') {
+      if (tab == 'wait-tab') {
+        invtWaitTab(res).then(orders => { res.json(orders); })
+      } else if (tab == 'success-tab') {
+        invSuccessTab(res).then(orders => { res.json(orders); })
+      }
+    } else if (page == 'preparem3') {
+      if (tab == 'wait-tab') {
+        M3WaitTab(res).then(orders => { res.json(orders); })
+      } else if (tab == 'success-tab') {
+        M3SuccessTab(res).then(orders => { res.json(orders); })
+      }
+    } else if (page == 'reprint') {
+      // รับพารามิเตอร์วันที่จาก request body
+      const { startDate, endDate } = req.body;
+      const dateFilter = { startDate, endDate };
 
-//       InvReprint(res, dateFilter).then(orders => { res.json(orders); })
-//     }
+      InvReprint(res, dateFilter).then(orders => { res.json(orders); })
+    }
 
-//     // res.status(200).json({
-//     //   status:200,
-//     //   message:'getOrder successful'
-//     // })
+    // res.status(200).json({
+    //   status:200,
+    //   message:'getOrder successful'
+    // })
 
-//   } catch (error) {
-//     res.status(500).json('invalid data')
-//     console.log(error);
-//   }
+  } catch (error) {
+    res.status(500).json('invalid data')
+    console.log(error);
+  }
 
-// }
+}
 
 exports.getOrderBento = async (req, res) => {
   try {
