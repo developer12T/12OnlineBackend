@@ -10,6 +10,13 @@ const InvReprint = require('../zort/subController/InvReprint');
 const receiptWaitTab = require('../zort/subController/ReceiptWaitTab');
 const receiptSuccessTab = require('../zort/subController/receiptSuccessTab');
 const ReceiptWaitTabPayment = require('../zort/subController/ReceiptWaitTabPayment');
+const AllOrderTab = require('../zort/subController/AllOrderTab');
+const invtWaitTab = require('../zort/subController/InvWaitTab');
+const invSuccessTab = require('../zort/subController/InvSuccessTab')
+const M3WaitTab = require('../zort/subController/M3WaitTab')
+const M3SuccessTab = require('../zort/subController/M3SuccessTab')
+
+
 
 
 exports.getOrder = async (req, res) => {
@@ -19,6 +26,7 @@ exports.getOrder = async (req, res) => {
     const { Order } = getModelsByChannel(channel, res, orderModel)
     const { Customer } = getModelsByChannel(channel, res, customerModel)
 
+    // console.log("Customer",Customer)
 
     var page = req.body.page;
     var tab = req.body.tab;
@@ -29,32 +37,32 @@ exports.getOrder = async (req, res) => {
       if (tab == 'wait-tab') {
         receiptWaitTab(res,channel).then(orders => { res.json(orders); })
       } else if (tab == 'success-tab') {
+        console.log('success-tab')
         receiptSuccessTab(res,channel).then(orders => { res.json(orders); })
       } else if (tab == 'payment-tab') {
         ReceiptWaitTabPayment(res,channel).then(orders => { res.json(orders) })
       }
     } else if (page == 'all') {
-      AllOrderTab(res).then(orders => { res.json(orders); })
+      AllOrderTab(res,channel).then(orders => { res.json(orders); })
       // const data = await Order.findAll()
       // res.json(data)
     } else if (page == 'inv') {
       if (tab == 'wait-tab') {
-        invtWaitTab(res).then(orders => { res.json(orders); })
+        invtWaitTab(res,channel).then(orders => { res.json(orders); })
       } else if (tab == 'success-tab') {
-        invSuccessTab(res).then(orders => { res.json(orders); })
+        invSuccessTab(res,channel).then(orders => { res.json(orders); })
       }
     } else if (page == 'preparem3') {
       if (tab == 'wait-tab') {
-        M3WaitTab(res).then(orders => { res.json(orders); })
+        M3WaitTab(res,channel).then(orders => { res.json(orders); })
       } else if (tab == 'success-tab') {
-        M3SuccessTab(res).then(orders => { res.json(orders); })
+        M3SuccessTab(res,channel).then(orders => { res.json(orders); })
       }
     } else if (page == 'reprint') {
       // รับพารามิเตอร์วันที่จาก request body
       const { startDate, endDate } = req.body;
       const dateFilter = { startDate, endDate };
-
-      InvReprint(res, dateFilter).then(orders => { res.json(orders); })
+      InvReprint(res,channel, dateFilter).then(orders => { res.json(orders); })
     }
 
     // res.status(200).json({
@@ -63,7 +71,7 @@ exports.getOrder = async (req, res) => {
     // })
 
   } catch (error) {
-    res.status(500).json('invalid data')
+    // res.status(500).json('invalid data')
     console.log(error);
   }
 
@@ -260,12 +268,13 @@ exports.removeOrder = async (req, res) => {
 }
 
 
-exports.getData = async (req, res) => {
+exports.getDashboardData = async (req, res) => {
   try {
     const channel = req.headers['x-channel']
     const { Order } = getModelsByChannel(channel, res, orderModel)
     const { Customer } = getModelsByChannel(channel, res, customerModel)
     const { Product } = getModelsByChannel(channel, res, productModel)
+
 
     const orders = await Order.find()
     const grouped = orders.reduce((acc, order) => {

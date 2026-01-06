@@ -1,17 +1,17 @@
 const express = require('express')
 const {
-  // getOrder,
+  getOrder,
   insert,
   removeOrder,
-  getData
+  getDashboardData
 } = require('../../controllers/order.controller')
 
 const router = express.Router()
 
-// router.post('/all', getOrder)
+router.post('/all', getOrder)
 router.post('/insert', insert)
 router.delete('/delete', removeOrder)
 
-router.get('/getData', getData)
+router.post('/getDashboardData', getDashboardData)
 // router.post('/insert', getOrder)
 module.exports = router

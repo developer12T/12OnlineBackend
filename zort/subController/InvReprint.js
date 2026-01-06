@@ -3,8 +3,14 @@ const getOrder = express.Router();
 const { Op } = require('sequelize');
 const { OrderHis, OrderDetailHis } = require('../model/Order');
 
-async function InvReprint(res, dateFilter = {}) {
+
+const orderModel = require('../../model/order')
+const customerModel = require('../../model/customer');
+const { getModelsByChannel } = require('../../authen/middleware/channel')
+
+async function InvReprint(res, channel, dateFilter = {}) {
     try {
+        const { Order } = getModelsByChannel(channel, res, orderModel)
         let whereClause = {};
 
         // เพิ่มเงื่อนไขวันที่ถ้ามีการส่งเข้ามา
@@ -17,55 +23,52 @@ async function InvReprint(res, dateFilter = {}) {
             };
         }
 
-        const data = await OrderHis.findAll({
-            attributes: ['updatedatetime', 'number', 'id', 'saleschannel', 'invno', 'cono'],
-            where: whereClause,
-            order: [
-                ['updatedatetime', 'ASC'],
-                ['invno', 'ASC']
-            ]
-        });
+        const data = await Order.find(
+            whereClause,
+            {
+                updatedatetime: 1,
+                number: 1,
+                id: 1,
+                saleschannel: 1,
+                invno: 1,
+                cono: 1,
+                listProduct: 1 
+            }
+        )
+            .sort({ updatedatetime: 1, invno: 1 })
+            .lean();
 
         const orders = [];
 
-        for (let i = 0; i < data.length; i++) {
-            const itemData = await OrderDetailHis.findAll({
-                attributes: ['productid', 'sku', 'name', 'number', 'pricepernumber', 'totalprice'],
-                where: { id: data[i].id }
+        for (const row of data) {
+
+            const items = (row.listProduct || []).map(item => {
+                const [sku = '', unit = ''] = item.sku?.split('_') || [];
+
+                return {
+                    productid: item.productid,
+                    sku,
+                    unit,
+                    name: item.name,
+                    number: item.number,
+                    pricepernumber: item.pricepernumber,
+                    totalprice: item.totalprice
+                };
             });
 
-            const items = itemData.map(item => ({
-                productid: item.productid,
-                sku: item.sku.split('_')[0],
-                unit: item.sku.split('_')[1],
-                name: item.name,
-                number: item.number,
-                pricepernumber: item.pricepernumber,
-                totalprice: item.totalprice
-            }));
-
-            // const order = {
-            //     "updatedatetime": "2025-10-01",
-            //     "number": "251001URJV47VK",
-            //     "id": 252280280,
-            //     "saleschannel": "Shopee",
-            //     "invno": "2568171032222",
-            //     "cono": 1257132227,
-            //     item: items,
-
-            // };
             const order = {
-                updatedatetime: data[i].updatedatetime,
-                number: data[i].number,
-                id: data[i].id,
-                saleschannel: data[i].saleschannel,
-                invno: data[i].invno,
-                cono: data[i].cono,
-                item: items,
-
+                updatedatetime: row.updatedatetime,
+                number: row.number,
+                id: row.id,
+                saleschannel: row.saleschannel,
+                invno: row.invno,
+                cono: row.cono,
+                item: items
             };
+
             orders.push(order);
         }
+
 
 
         return orders;

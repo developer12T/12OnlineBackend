@@ -25,7 +25,7 @@ const orderSchema = new mongoose.Schema(
     //   unique: true
     // },
     id: { type: String, unique: true },
-    cono: { type: String, default: '' },
+    cono: { type: String, default: '1' },
     invno: { type: String, default: '' },
     ordertype: { type: String },
     number: { type: String },
@@ -78,10 +78,10 @@ const orderSchema = new mongoose.Schema(
     vatamount: { type: Number },
     totalproductamount: { type: Number },
     currency: { type: String },
-    statusprint: { type: String, default: '' },
-    totalprint: { type: Number },
+    statusprint: { type: String, default: '000' },
+    totalprint: { type: Number ,default: 0 },
     statusprintinv: { type: String, default: '' },
-    statusPrininvSuccess: { type: String, default: '' },
+    statusPrininvSuccess: { type: String, default: '000' },
     createdAt: { type: Date, default: Date.now },
     updatedAt: { type: Date, default: Date.now },
     listProduct: [listOrderProductSchema]

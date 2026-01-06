@@ -1,44 +1,40 @@
 const express = require('express');
 const getOrder = express.Router();
 const { Op } = require('sequelize');
-const { Order,OrderDetail } = require('../model/Order');
-const { Customer } = require('../model/Customer');
+// const { Order,OrderDetail } = require('../model/Order');
+// const { Customer } = require('../model/Customer');
+const orderModel = require('../../model/order')
+const customerModel = require('../../model/customer');
+const { getModelsByChannel } = require('../../authen/middleware/channel')
 
-async function invSuccessTab(res) {
-    const data = await Order.findAll({
-        where: {
-            statusprintINV: 'TaxInvoice',
-            [Op.or]: [
-                {   statusPrininvSuccess: '001' },
-                {   statusPrininvSuccess: '002' },
-            ]
-          
-        }
+
+
+async function invSuccessTab(res,channel) {
+
+    const { Order } = getModelsByChannel(channel, res, orderModel)
+    const { Customer } = getModelsByChannel(channel, res, customerModel)
+
+    const data = await Order.find({
+    statusprintinv: 'TaxInvoice',
+
     });
-    const orders = [];
 
-    for (let i = 0; i < data.length; i++) {
-        const itemData = await OrderDetail.findAll({
-            attributes: ['productid', 'sku', 'name', 'number', 'pricepernumber', 'totalprice'],
-            where: {
-                id: data[i].id
-            }
-        });
+   const orders = [];
 
-        const cusdata = await Customer.findAll({
-            attributes: ['customername'],
-            where: {
-                customerid: data[i].customerid
-            }
-        })
+    for (const row of data) {
 
-        // const cuss = cusdata.customername;
-        const cuss = cusdata[0]?.customername || '';
-        // console.log(itemData);
+        const itemData = data.find(item => item.id === row.id)
 
-        // console.log(cuss)
-        // var itskulist = listofdetail.sku.split('_')[1] ;
-        const items = itemData.map(item => ({
+        // console.log("itemData", itemData)
+
+        const cusdata = await Customer.findOne(
+            { customerid: row.customerid },
+
+        ).select("customername customerid")
+        const cuss = cusdata?.customername || '';
+
+
+        const items = itemData.listProduct.map(item => ({
             productid: item.productid,
             sku: item.sku.split('_')[0],
             unit: item.sku.split('_')[1],
@@ -49,27 +45,27 @@ async function invSuccessTab(res) {
         }));
 
         const order = {
-            id: data[i].id,
+            id: row.id,
             // saleschannel: data[i].saleschannel,
-            orderdate: data[i].orderdate,
-            orderdateString: data[i].orderdateString,
-            number: data[i].number,
-            customerid: data[i].customerid,
-            status: data[i].status,
-            paymentstatus: data[i].paymentstatus,
-            amount: data[i].amount,
-            vatamount: data[i].vatamount,
-            shippingchannel: data[i].shippingchannel,
-            shippingamount: data[i].shippingamount,
-            shippingstreetAddress: data[i].shippingstreetAddress,
-            shippingsubdistrict: data[i].shippingsubdistrict,
-            shippingdistrict: data[i].shippingdistrict,
-            shippingprovince: data[i].shippingprovince,
-            shippingpostcode: data[i].shippingpostcode,
-            createdatetime:data[i].createdatetime,
-            statusprint: data[i].statusprint,
-            totalprint:data[i].totalprint,
-            saleschannel: data[i].saleschannel,
+            orderdate: row.orderdate,
+            orderdateString: row.orderdateString,
+            number: row.number,
+            customerid: row.customerid,
+            status: row.status,
+            paymentstatus: row.paymentstatus,
+            amount: row.amount,
+            vatamount: row.vatamount,
+            shippingchannel: row.shippingchannel,
+            shippingamount: row.shippingamount,
+            shippingstreetAddress: row.shippingstreetAddress,
+            shippingsubdistrict: row.shippingsubdistrict,
+            shippingdistrict: row.shippingdistrict,
+            shippingprovince: row.shippingprovince,
+            shippingpostcode: row.shippingpostcode,
+            createdatetime: row.createdatetime,
+            statusprint: row.statusprint,
+            totalprint: row.totalprint,
+            saleschannel: row.saleschannel,
             item: items,
             customer: cuss,
         };

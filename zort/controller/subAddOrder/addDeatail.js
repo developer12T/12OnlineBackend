@@ -133,6 +133,8 @@ addDeatail.post('/addDeatail', async (req, res) => {
 
     data.list.forEach(item => {
       const multiplier = Number(item?.sku?.split?.('_')?.[2]) || 1
+
+      console.log('multiplier',multiplier)
       const adjustedPrice =
         multiplier > 1
           ? Math.floor(item.pricepernumber / multiplier)

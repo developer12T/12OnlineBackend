@@ -1,16 +1,13 @@
 const express = require('express');
 const getOrder = express.Router();
 const { Op } = require('sequelize');
-// const { OrderHis, OrderDetailHis } = require('../model/Order');
-// const { Customer } = require('../model/Customer');
-const orderModel = require('../../model/order')
-const customerModel = require('../../model/customer');
-const { getModelsByChannel } = require('../../authen/middleware/channel');
-const order = require('../../model/order');
+const { OrderHis,OrderDetailHis } = require('../model/Order');
+const { Customer } = require('../model/Customer');
+
 // async function M3SuccessTab(res) {
 //     try {
 
-
+        
 // const threeMonthsAgo = new Date();
 // threeMonthsAgo.setMonth(threeMonthsAgo.getMonth() - 3);
 
@@ -23,7 +20,7 @@ const order = require('../../model/order');
 //               order: [['updatedatetime', 'DESC']],
 //         });
 //         const orders = [];
-
+    
 //         for (let i = 0; i < data.length; i++) {
 //             const itemData = await OrderDetailHis.findAll({
 //                 attributes: ['productid', 'sku', 'name', 'number', 'pricepernumber', 'totalprice'],
@@ -31,20 +28,20 @@ const order = require('../../model/order');
 //                     id: data[i].id
 //                 }
 //             });
-
+    
 //             const cusdata = await Customer.findAll({
 //                 attributes: ['customername','customerid'],
 //                 where: {
 //                     customerid: data[i].customerid
 //                 }
 //             })
-
-
-
+    
+    
+           
 //             const cuss = cusdata[0]?.customername || '';
-
-
-
+           
+    
+           
 //             const items = itemData.map(item => ({
 //                 productid: item.productid,
 //                 sku: item.sku.split('_')[0],
@@ -84,10 +81,10 @@ const order = require('../../model/order');
 //                 var isCOD = 'ไม่เก็บปลายทาง'
 //             }
 
-
+    
 //             const order = {
 //                 id: data[i].id,
-
+            
 //                 cono:data[i].cono,
 //                 invno:data[i].invno,
 //                 orderdate: data[i].orderdate,
@@ -117,63 +114,79 @@ const order = require('../../model/order');
 //             };
 //             orders.push(order);
 //         }
-
+    
 //         return orders;
 //     } catch (error) {
 //       return  { status: 'dataNotFound' };
 //     }
 //   }
-
-async function M3SuccessTab(res, channel) {
+  
+async function M3SuccessTab(res) {
     try {
-        const { Order } = getModelsByChannel(channel, res, orderModel)
+        // วันที่ปัจจุบัน ลบ 3 เดือน
+        const threeMonthsAgo = new Date();
+        threeMonthsAgo.setMonth(threeMonthsAgo.getMonth() - 3);
 
-        // 📅 ปัจจุบัน - 3 เดือน
-        const threeMonthsAgo = new Date()
-        threeMonthsAgo.setMonth(threeMonthsAgo.getMonth() - 3)
+        // ใช้ JOIN แทนการ loop query
+        const data = await OrderHis.findAll({
+            include: [
+                {
+                    model: OrderDetailHis,
+                    attributes: ['productid', 'sku', 'name', 'number', 'pricepernumber', 'totalprice'],
+                    required: false
+                },
+                {
+                    model: Customer,
+                    attributes: ['customername', 'customerid'],
+                    required: false
+                }
+            ],
+            where: {
+                updatedatetime: {
+                    [Op.gte]: threeMonthsAgo
+                }
+            },
+            order: [['updatedatetime', 'DESC']],
+            limit: 5000, // จำกัดข้อมูลต่อครั้ง
+            raw: false, // สำคัญ: ต้องเป็น false เพื่อให้ include ทำงาน
+            subQuery: false, // ป้องกัน subquery ที่ช้า
+            logging: console.log // ดู SQL query ที่สร้าง
+        });
 
-        // 🔎 ดึง order + customer ทีเดียว
-        const dataOrder = await Order.find({
-            updatedAt: { $gte: threeMonthsAgo }
-        }).sort({ updatedAt: -1 })
-
+        // สร้าง lookup object สำหรับ status mapping
         const statusMapping = {
-            Success: 'สำเร็จ',
-            Voided: 'ยกเลิก',
-            Waiting: 'รอส่ง',
-            Pending: 'รอโอน',
-            SHIPPING: 'ส่งสำเร็จ'
-        }
+            'Success': 'สำเร็จ',
+            'Voided': 'ยกเลิก',
+            'Waiting': 'รอส่ง',
+            'Pending': 'รอโอน',
+            'SHIPPING':'ส่งสำเร็จ'
+        };
 
         const paymentStatusMapping = {
-            Paid: 'ชำระแล้ว',
-            paid: 'ชำระแล้ว',
-            Voided: 'ยกเลิก',
-            Pending: 'รอชำระ'
-        }
+            'Paid': 'ชำระแล้ว',
+            'Voided': 'ยกเลิก',
+            'Pending': 'รอชำระ',
+            'paid':'ชำระแล้ว'
+        };
 
-        const orders = [];
+        // Map ข้อมูลแบบ functional programming
+        const orders = data.map(orderData => {
+            // Process items
+            const items = (orderData.OrderDetailHis || []).map(item => ({
+                productid: item.productid,
+                sku: item.sku.split('_')[0],
+                unit: item.sku.split('_')[1],
+                name: item.name,
+                number: item.number,
+                pricepernumber: item.pricepernumber,
+                totalprice: item.totalprice
+            }));
 
-        for (const orderData of dataOrder) {
-
-            const items = [];
-            for (const item of orderData.listProduct || []) {
-                items.push({
-                    productid: item.productid,
-                    sku: item.sku?.split('_')?.[0] || '',
-                    unit: item.sku?.split('_')?.[1] || '',
-                    name: item.name,
-                    number: item.number,
-                    pricepernumber: item.pricepernumber,
-                    totalprice: item.totalprice
-                });
-            }
-
-            orders.push({
+            return {
                 id: orderData.id,
                 cono: orderData.cono,
                 invno: orderData.invno,
-                updatedatetime: orderData.updatedAt,
+                updatedatetime:orderData.updatedatetime,
                 orderdate: orderData.orderdate,
                 orderdateString: orderData.orderdateString,
                 number: orderData.number,
@@ -181,8 +194,7 @@ async function M3SuccessTab(res, channel) {
                 status: orderData.status,
                 statusText: statusMapping[orderData.status] || 'พบข้อผิดพลาด',
                 paymentstatus: orderData.paymentstatus,
-                paymentstatusText:
-                    paymentStatusMapping[orderData.paymentstatus] || 'พบข้อผิดพลาด',
+                paymentstatusText: paymentStatusMapping[orderData.paymentstatus] || 'พบข้อผิดพลาด',
                 amount: orderData.amount,
                 vatamount: orderData.vatamount,
                 shippingchannel: orderData.shippingchannel,
@@ -192,21 +204,21 @@ async function M3SuccessTab(res, channel) {
                 shippingdistrict: orderData.shippingdistrict,
                 shippingprovince: orderData.shippingprovince,
                 shippingpostcode: orderData.shippingpostcode,
-                createdatetime: orderData.createdAt,
+                createdatetime: orderData.createdatetime,
                 statusprint: orderData.statusprint,
-                totalprint: orderData.totalprint ?? 0,
+                totalprint: orderData.totalprint,
                 saleschannel: orderData.saleschannel,
                 item: items,
-                customer: orderData.customername || '',
+                customer: orderData.Customer?.customername || '',
                 isCOD: orderData.isCOD === '1' ? 'เก็บปลายทาง' : 'ไม่เก็บปลายทาง'
-            });
-        }
+            };
+        });
 
-        return orders
-    } catch (err) {
-        console.error(err)
-        throw err
+        return orders;
+    } catch (error) {
+        console.error('M3SuccessTab Error:', error);
+        return { status: 'dataNotFound' };
     }
 }
 
-module.exports = M3SuccessTab;
+  module.exports = M3SuccessTab;

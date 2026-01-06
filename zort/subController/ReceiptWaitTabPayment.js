@@ -13,7 +13,7 @@ const customerModel = require('../../model/customer')
 const { getModelsByChannel } = require('../../authen/middleware/channel')
 
 
-async function ReceiptWaitTabPayment(res) {
+async function ReceiptWaitTabPayment(res,channel) {
     try {
 
         const { Order } = getModelsByChannel(channel, res, orderModel)
@@ -23,9 +23,8 @@ async function ReceiptWaitTabPayment(res) {
             statusprint: '000',
             statusPrininvSuccess: '000',
             status: { $ne: 'Voided' },
-            $or: [
-                { paymentstatus: 'Paid' }
-            ]
+            paymentstatus : { $ne: 'Paid' },
+
         })
 
         const orders = [];
