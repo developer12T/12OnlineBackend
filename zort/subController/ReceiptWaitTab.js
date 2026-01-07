@@ -101,6 +101,8 @@ async function receiptWaitTab(res, channel) {
                 paymentstatus: row.paymentstatus,
                 paymentstatusText: paymentstatusText,
                 amount: row.amount,
+                discount: row.discount,
+                discountamount: row.discountamount,
                 vatamount: row.vatamount,
                 shippingchannel: row.shippingchannel,
                 shippingamount: row.shippingamount,

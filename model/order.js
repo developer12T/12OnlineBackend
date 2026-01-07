@@ -3,7 +3,7 @@ const mongoose = require('mongoose')
 const listOrderProductSchema = new mongoose.Schema({
   itemNumber: { type: Number },
   id: { type: Number },
-  productid: { type: Number },
+  productid: { type: String },
   procode: { type: String },
   sku: { type: String },
   itemCode: { type: String },
