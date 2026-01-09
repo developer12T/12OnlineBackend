@@ -1,11 +1,5 @@
-const express = require('express');
-const getOrder = express.Router();
-
 const orderModel = require('../../model/order')
 const customerModel = require('../../model/customer')
-const { Op } = require('sequelize');
-// const { Order, OrderDetail } = require('../model/Order');
-// const { Customer } = require('../model/Customer');
 const moment = require('moment');
 require('moment/locale/th');
 const currentDate = moment().utcOffset(7).format('YYYY-MM-DD');
@@ -17,6 +11,7 @@ const { getModelsByChannel } = require('../../authen/middleware/channel')
 
 
 async function receiptWaitTab(res, channel) {
+
     try {
         const { Order } = getModelsByChannel(channel, res, orderModel)
         const { Customer } = getModelsByChannel(channel, res, customerModel)
@@ -62,8 +57,8 @@ async function receiptWaitTab(res, channel) {
                 sku: item.sku.split('_')[0],
                 unit: item.sku.split('_')[1],
                 name: item.name,
-                number: item.number,
-                pricepernumber: item.pricepernumber,
+                number: item.quantity,
+                pricepernumber: item.pricePerUnit,
                 totalprice: item.totalprice
             }));
 
@@ -129,6 +124,7 @@ async function receiptWaitTab(res, channel) {
         console.error(error);
         return { status: 'dataNotFound' };
     }
+
 }
 
 module.exports = receiptWaitTab;

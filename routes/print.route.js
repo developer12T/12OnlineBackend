@@ -1,12 +1,18 @@
-const express = require("express");
-const router = express.Router();
-const printController = require("../controllers/print.controller");
+const express = require('express')
+const router = express.Router()
+const printController = require('../controllers/print.controller')
 // const auth = require("../middlewares/auth.middleware"); // ถ้ามี
 
 router.post(
-  "/original",
+  '/original',
   // auth, // ถ้าต้อง auth
   printController.printReceiptOriginal
-);
+)
 
-module.exports = router;
+router.post(
+  '/originalandcopy',
+  // auth, // ถ้าต้อง auth
+  printController.printReceiptOriginalAndCopy
+)
+
+module.exports = router

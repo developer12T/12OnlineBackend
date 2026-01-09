@@ -212,7 +212,9 @@ exports.handleOrderPaid = async data => {
   // ================================
   // DISCOUNT / VOUCHER
   // ================================
-  const discountValue = Number(data.discountamount || data.voucheramount || 0)
+  const discountValue = Number(
+    data.discountamount || data.voucheramount || 0 || data.discount
+  )
 
   if (discountValue > 0) {
     const CODE = 'DISONLINE'

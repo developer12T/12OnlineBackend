@@ -46,15 +46,22 @@ module.exports = (res, orders = []) => {
 
   let currentPageNumber = 1
   console.log('Generating receipt original PDF for', orders, 'orders')
+  const copies = ['ต้นฉบับ', 'สำเนา']
+
   for (let i = 0; i < list.length; i++) {
-    if (i > 0) doc.addPage()
-    const pdf = new ReceiptPDF(doc, {
-      mmToPt: MM_TO_PT,
-      pageNumber: currentPageNumber
-    })
-    pdf.setCopyType('ต้นฉบับ')
-    pdf.invoice(list[i]) // no data mapping yet, placeholders
-    currentPageNumber++
+    for (let c = 0; c < copies.length; c++) {
+      if (i !== 0 || c !== 0) doc.addPage()
+
+      const pdf = new ReceiptPDF(doc, {
+        mmToPt: MM_TO_PT,
+        pageNumber: currentPageNumber
+      })
+
+      pdf.setCopyType(copies[c])
+      pdf.invoice(list[i])
+
+      currentPageNumber++
+    }
   }
 
   doc.end()
@@ -69,7 +76,7 @@ class ReceiptPDF {
     this.doc = doc
     this.MM_TO_PT = mmToPt
     this.currentPageNumber = pageNumber || 1
-    this.copyType = 'ต้นฉบับ'
+    this.copyType
 
     // Table widths used in PHP
     this.colWidths = [10, 56, 10, 10, 15, 12, 20] // sum = 133 mm
@@ -82,7 +89,7 @@ class ReceiptPDF {
   }
 
   setCopyType (type) {
-    this.copyType = type || 'ต้นฉบับ'
+    this.copyType = type
   }
 
   // ===== Utilities (mm -> pt) =====
@@ -256,7 +263,7 @@ class ReceiptPDF {
     // บรรทัดขวา (กึ่งกลางระหว่าง 13 กับ 17)
     d.font('THSarabunNew_Bold').fontSize(14)
     d.text(
-      'ต้นฉบับบิลเงินสด / ใบกำกับภาษี',
+      `${this.copyType}บิลเงินสด / ใบกำกับภาษี`,
       this.mm(10),
       this.mm(15), // ⭐ จุดสำคัญ
       {

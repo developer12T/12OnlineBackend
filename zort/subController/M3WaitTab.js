@@ -1,127 +1,119 @@
-const express = require('express');
-const getOrder = express.Router();
-const { Op } = require('sequelize');
-// const { Order, OrderDetail } = require('../model/Order');
-// const { Customer } = require('../model/Customer');
+const express = require('express')
 const axios = require('axios')
-
 const orderModel = require('../../model/order')
-const customerModel = require('../../model/customer');
-const { getModelsByChannel } = require('../../authen/middleware/channel');
+const customerModel = require('../../model/customer')
+const { getModelsByChannel } = require('../../authen/middleware/channel')
+const moment = require('moment');
+const currentDate = moment().utcOffset(7).format('YYYY-MM-DD')
+// function today() {
+const currentDateTime = moment().utcOffset(7).format('YYYY-MM-DDTHH:mm')
 
+async function M3WaitTab (res, channel) {
+  try {
+    const { Order } = getModelsByChannel(channel, res, orderModel)
+    const { Customer } = getModelsByChannel(channel, res, customerModel)
 
-async function M3WaitTab(res,channel) {
-    try {
-        const { Order } = getModelsByChannel(channel, res, orderModel)
-        const response = await axios.post(process.env.API_URL + '/M3API/OrderManage/order/getOrderErpToShow', {}, {});
-        const listid = response.data
+    const data = await Order.find({
+      statusprint: '000',
+      statusPrininvSuccess: '000',
+      status: { $ne: 'Voided' },
+      $or: [{ paymentstatus: 'PAY_ON_ACCEPTANCE' }, { paymentstatus: 'Paid' }]
+    })
+    // console.log("data",data)
+    const orders = []
 
-        const orders = [];
+    for (const row of data) {
+      const itemData = data.find(item => item.id === row.id)
 
-        const orderIdList = [... new Set(listid.number)]
-        const datapre = await Order.find({
-            number: { $in: orderIdList }
-        });
-        const data = datapre
+      // console.log("itemData", itemData)
 
-        for (const orderData of dataOrder) {
+      let cusdata
+      if (
+        (row.customeriderp === 'OLAZ000000' && row.saleschannel === 'Lazada') ||
+        (row.customeriderp === 'OAMZ000000' && row.saleschannel === 'Amaze')
+      ) {
+        cusdata = await Customer.findOne({ customerid: row.customerid }).select(
+          'customername customerid customeriderp customercode'
+        )
+      } else {
+        cusdata = await Customer.findOne({ customerid: row.customerid }).select(
+          'customername customerid customeriderp customercode'
+        )
+      }
+      const cuss = cusdata?.customername || ''
 
-        //     // console.log('test debug ::')
-        //     // console.log(data.length);
-        //     // console.log(Object.keys(data[0]));
-        //     // console.log(data[0].value);
-        //     // if (Array.isArray(data)) {
-        //     //     console.log('Array length:', data.length);
-        //     //     console.log('First item:', data[0]);
-        //     //     console.log('Last item:', data[316]);
-        //     // } else if (data?.recordset) {
-        //     //     console.log('Recordset length:', data.recordset.length);
-        //     //     console.log('First item:', data.recordset[0]);
-        //     // } else if (Array.isArray(data[0])) {
-        //     //     console.log('Nested array length:', data[0].length);
-        //     //     console.log('First item:', data[0][0]);
-        //     // } else {
-        //     //     console.log('Unknown data format:', data);
-        //     // }
-        //     // console.log(data[0].value);
-        //     const cusdata = await Customer.findAll({
-        //         attributes: ['customername', 'customerid'],
-        //         where: {
-        //             customerid: data[i].customerid
-        //         }
-        //     })
-        //     // console.log(cusdata)
+      const items = itemData.listProduct.map(item => ({
+        productid: item.productid,
+        sku: item.sku.split('_')[0],
+        unit: item.sku.split('_')[1],
+        name: item.name,
+        number: item.quantity,
+        pricepernumber: item.pricePerUnit,
+        totalprice: item.totalprice
+      }))
 
+      const totalprint = row.totalprint ?? 0
+      const taxInStatus =
+        row.statusprintinv === 'TaxInvoice' ? 'ขอใบกำกับภาษี' : ''
+      const statusText =
+        {
+          Success: 'สำเร็จ',
+          Voided: 'ยกเลิก',
+          Waiting: 'รอส่ง',
+          Pending: 'รอโอน'
+        }[row.status] || 'พบข้อผิดพลาด'
 
+      const paymentstatusText =
+        {
+          Paid: 'ชำระแล้ว',
+          Voided: 'ยกเลิก',
+          Pending: 'รอชำระ'
+        }[row.paymentstatus] || 'พบข้อผิดพลาด'
 
-            const cuss = orderData?.customername || '';
+      const isCOD = row.isCOD == '1' ? 'เก็บปลายทาง' : 'ไม่เก็บปลายทาง'
 
-            if (orderData.status === 'Success') {
-                var statusText = 'สำเร็จ'
-            } else if (orderData.status === 'Voided') {
-                var statusText = 'ยกเลิก'
-            } else if (orderData.status === 'Waiting') {
-                var statusText = 'รอส่ง'
-            } else if (orderData.status === 'Pending') {
-                var statusText = 'รอโอน'
-            } else {
-                var statusText = 'พบข้อผิดพลาด'
-            }
-
-            if (orderData.paymentstatus === 'Paid') {
-                var paymentstatusText = 'ชำระแล้ว'
-            } else if (orderData.paymentstatus === 'Voided') {
-                var paymentstatusText = 'ยกเลิก'
-            } else if (orderData.paymentstatus === 'Pending') {
-                var paymentstatusText = 'รอชำระ'
-            } else {
-                var paymentstatusText = 'พบข้อผิดพลาด'
-            }
-
-            if (orderData.isCOD == '1') {
-                var isCOD = 'เก็บปลายทาง'
-            } else {
-                var isCOD = 'ไม่เก็บปลายทาง'
-            }
-
-
-
-            const order = {
-                id: orderData.id,
-                cono: orderData.cono,
-                invno: orderData.invno,
-                orderdate: orderData.orderdate,
-                orderdateString: orderData.orderdateString,
-                number: orderData.number,
-                customerid: orderData.customerid,
-                status: orderData.status,
-                statusText: statusText,
-                paymentstatus: orderData.paymentstatus,
-                paymentstatusText: paymentstatusText,
-                amount: orderData.amount,
-                vatamount: orderData.vatamount,
-                shippingchannel: orderData.shippingchannel,
-                shippingamount: orderData.shippingamount,
-                shippingstreetAddress: orderData.shippingstreetAddress,
-                shippingsubdistrict: orderData.shippingsubdistrict,
-                shippingdistrict: orderData.shippingdistrict,
-                shippingprovince: orderData.shippingprovince,
-                shippingpostcode: orderData.shippingpostcode,
-                createdatetime: orderData.createdatetime,
-                statusprint: orderData.statusprint,
-                totalprint: orderData.totalprint,
-                saleschannel: orderData.saleschannel,
-                customer: cuss,
-                isCOD: isCOD
-            };
-            orders.push(order);
-        }
-
-        return orders;
-    } catch (error) {
-        console.log(error);
-        return { status: 'dataNotFound' };
+      const order = {
+        id: row.id,
+        cono: row.cono,
+        invno: row.invno,
+        orderdate: row.orderdate,
+        orderdateString: row.orderdateString,
+        printdate: currentDate,
+        printdatetime: currentDateTime,
+        number: row.number,
+        customerid: row.customerid,
+        status: row.status,
+        statusText: statusText,
+        paymentstatus: row.paymentstatus,
+        paymentstatusText: paymentstatusText,
+        amount: row.amount,
+        discount: row.discount,
+        discountamount: row.discountamount,
+        vatamount: row.vatamount,
+        shippingchannel: row.shippingchannel,
+        shippingamount: row.shippingamount,
+        shippingstreetAddress: row.shippingstreetAddress,
+        shippingsubdistrict: row.shippingsubdistrict,
+        shippingdistrict: row.shippingdistrict,
+        shippingprovince: row.shippingprovince,
+        shippingpostcode: row.shippingpostcode,
+        createdatetime: row.createdatetime,
+        statusprint: row.statusprint,
+        statusprintinv: row.statusprintinv,
+        invstatus: taxInStatus,
+        totalprint: totalprint,
+        saleschannel: row.saleschannel,
+        item: items,
+        customer: cuss,
+        isCOD: isCOD
+      }
+      orders.push(order)
     }
+    return orders
+  } catch (error) {
+    console.error(error)
+    return { status: 'dataNotFound' }
+  }
 }
 
-module.exports = M3WaitTab;
+module.exports = M3WaitTab
