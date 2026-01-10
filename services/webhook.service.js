@@ -213,10 +213,10 @@ exports.handleOrderPaid = async data => {
   // DISCOUNT / VOUCHER
   // ================================
   const discountValue = Number(
-    data.discountamount || data.voucheramount || 0 || data.discount
+    data.sellerdiscount
   )
 
-  if (discountValue > 0) {
+  if (data.saleschannel == 'Shopee' && data.sellerdiscount > 0) {
     const CODE = 'DISONLINE'
     if (!listProduct.some(p => p.itemCode === CODE)) {
       listProduct.push({

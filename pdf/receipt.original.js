@@ -550,7 +550,7 @@ class ReceiptPDF {
     const SUM_H = 28
     const SUM_FONT = 14
     // const SUM_TEXT = `(${this.thaiNumberToWords(300)})`
-    const SUM_TEXT = `(${this.thaiNumberToWords(data.totalamount)})`
+    const SUM_TEXT = `(${this.thaiNumberToWords(data.amount)})`
 
     // วาดกรอบบน + ซ้าย
     this.drawBordersMm(SUM_X, sumY, SUM_W, SUM_H, 'TL')

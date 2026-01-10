@@ -3,7 +3,7 @@ const axios = require('axios')
 const orderModel = require('../../model/order')
 const customerModel = require('../../model/customer')
 const { getModelsByChannel } = require('../../authen/middleware/channel')
-const moment = require('moment');
+const moment = require('moment')
 const currentDate = moment().utcOffset(7).format('YYYY-MM-DD')
 // function today() {
 const currentDateTime = moment().utcOffset(7).format('YYYY-MM-DDTHH:mm')
@@ -14,9 +14,11 @@ async function M3WaitTab (res, channel) {
     const { Customer } = getModelsByChannel(channel, res, customerModel)
 
     const data = await Order.find({
-      statusprint: '000',
-      statusPrininvSuccess: '000',
+    //   statusprint: '000',
+    //   statusPrininvSuccess: '000',
       status: { $ne: 'Voided' },
+      cono: { $ne: '' },
+      invno: { $ne: '' },
       $or: [{ paymentstatus: 'PAY_ON_ACCEPTANCE' }, { paymentstatus: 'Paid' }]
     })
     // console.log("data",data)
