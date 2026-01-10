@@ -218,6 +218,7 @@ exports.handleOrderPaid = async data => {
 
   if (data.saleschannel == 'Shopee' && data.sellerdiscount > 0) {
     const CODE = 'DISONLINE'
+    data.amount += discountValue // เพิ่มกลับในกรณีมี discount
     if (!listProduct.some(p => p.itemCode === CODE)) {
       listProduct.push({
         itemNumber: listProduct.length + 1,
