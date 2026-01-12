@@ -1,154 +1,143 @@
 const orderModel = require('../model/order')
 const productModel = require('../model/product')
 const { getModelsByChannel } = require('../authen/middleware/channel')
+const { Customer } = require('../model/master')
 const axios = require('axios')
-const _ = require('lodash')
-async function handleOrderCreated (data) {
-  // 1. เช็คว่า order ซ้ำไหม
-  // 2. save ลง DB
-  // 3. trigger workflow อื่น
+const { Op } = require('sequelize')
+
+function getCustomerPrefix (channel) {
+  switch (channel) {
+    case 'Shopee':
+      return 'OSPE'
+    case 'Lazada':
+      return 'OLAZ'
+    case 'TIKTOK':
+      return 'OTIK'
+    default:
+      throw new Error(`Unsupported channel: ${channel}`)
+  }
 }
 
-// exports.handleOrderPaid = async data => {
-//   const channel = 'uat'
-//   //   const channel = 'uat'
-//   const { Order } = getModelsByChannel(channel, null, orderModel)
-//   const { Product } = getModelsByChannel(channel, null, productModel)
-//   if (!data || data.paymentstatus !== 'Paid') {
-//     console.log('[Webhook] paymentstatus not Paid → skip')
-//     return
-//   }
+async function generateCustomerNo (channel) {
+  const prefix = getCustomerPrefix(channel)
 
-//   const orderId = String(data.id)
-//   const orderNumber = data.number
+  const lastCustomer = await Customer.findOne({
+    where: {
+      customerNo: {
+        [Op.like]: `${prefix}%`
+      }
+    },
+    order: [['customerNo', 'DESC']], // 👈 Sequelize ใช้แบบนี้
+    attributes: ['customerNo'],
+    raw: true
+  })
 
-//   if (!orderId || !orderNumber) {
-//     throw new Error('Invalid webhook payload: missing id or number')
-//   }
+  let nextNumber = 1
 
-//   // 1️⃣ หา order เดิม
-//   let order = await Order.findOne({ id: orderId })
+  if (lastCustomer?.customerNo) {
+    const lastNo = lastCustomer.customerNo.replace(prefix, '')
+    nextNumber = Number(lastNo) + 1
+  }
 
-//   // 2️⃣ map list → listProduct
-//   const listProduct = Array.isArray(data.list)
-//     ? data.list.map(item => ({
-//         itemNumber: item.itemNumber,
-//         id: item.id ? Number(item.id) : data.id,
-//         productid: item.productid,
-//         procode: item.proCode || '',
-//         sku: item.sku,
-//         itemCode: item.itemCode,
-//         unit: item.unit,
-//         name: item.name,
-//         quantity: item.quantity,
-//         discount: item.discount || 0,
-//         discountChanel: item.discountChanel || '',
-//         pricePerUnitOri: item.pricePerUnitOri ?? item.pricePerUnit,
-//         pricePerUnit: item.pricePerUnit,
-//         totalprice: item.totalprice
-//       }))
-//     : []
+  const padded = String(nextNumber).padStart(6, '0')
+  return `${prefix}${padded}`
+}
 
-//   // 3️⃣ ถ้าไม่เจอ → สร้างใหม่ (Paid มาก่อน Created)
-//   if (!order) {
-//     await Order.updateOne(
-//       { id: orderId },
-//       {
-//         $setOnInsert: {
-//           id: orderId,
-//           ...data,
-//           listProduct
-//         }
-//       },
-//       { upsert: true }
-//     )
-//     console.log(`[Webhook] Order ${orderNumber} created (Paid)`)
-//     return
-//   }
+function splitShippingAddress4 (address = '') {
+  const text = String(address).trim()
+  const chunkSize = 36
 
-//   // 4️⃣ กันยิงซ้ำ
-//   // if (order.paymentstatus === 'Paid') {
-//   //   console.log(`[Webhook] Order ${orderNumber} already Paid → skip`)
-//   //   return
-//   // }
+  return {
+    shippingAddress1: text.substring(0, chunkSize) || '',
+    shippingAddress2: text.substring(chunkSize, chunkSize * 2) || '',
+    shippingAddress3: text.substring(chunkSize * 2, chunkSize * 3) || '',
+    shippingAddress4: text.substring(chunkSize * 3, chunkSize * 4) || ''
+  }
+}
 
-//   if (data.shippingamount > 0) {
-//     const baseItemNumber = listProduct.length + 1
+async function findCustomerByTaxNo (taxno) {
+  if (!taxno) return null
 
-//     // 1️⃣ item ค่าขนส่ง (ของเดิมคุณ)
-//     const shippingSku = 'ZNS1401001_JOB'
-//     const shippingProductId = 9999999
+  return Customer.findOne({
+    where: { taxno },
+    attributes: ['customerNo', 'taxno'],
+    raw: true
+  })
+}
+async function insertCustomerToErp (orderData) {
+  const taxno = orderData.customeridnumber?.trim()
+  if (!taxno) return null
 
-//     const shipping = {
-//       itemNumber: baseItemNumber,
-//       id: Number(data.id),
-//       productid: shippingProductId,
-//       procode: '',
-//       sku: shippingSku,
-//       itemCode: shippingSku,
-//       unit: 'JOB',
-//       name: 'ค่าขนส่ง',
-//       quantity: 1,
-//       discount: 0,
-//       discountChanel: '',
-//       pricePerUnitOri: Number(data.shippingamount),
-//       pricePerUnit: Number(data.shippingamount),
-//       totalprice: Number(data.shippingamount)
-//     }
+  // 1️⃣ เช็คว่ามีลูกค้าอยู่แล้วหรือยัง
+  const existingCustomer = await findCustomerByTaxNo(taxno)
 
-//     listProduct.push(shipping)
+  if (existingCustomer) {
+    console.log(`[ERP] Customer already exists ${existingCustomer.customerNo}`)
+    return existingCustomer.customerNo
+  }
 
-//   }
+  // 2️⃣ ยังไม่มี → generate ใหม่
+  const customerNo = await generateCustomerNo(orderData.saleschannel)
 
-//   if (data.discountamount > 0) {
+  const {
+    shippingAddress1,
+    shippingAddress2,
+    shippingAddress3,
+    shippingAddress4
+  } = splitShippingAddress4(orderData.shippingaddress)
 
-//     const baseItemNumber = listProduct.length + 1
+  const payload = {
+    Hcase: 1,
+    customerNo,
+    customerStatus: '20',
+    customerName: orderData.customername,
+    customerChannel: '107',
+    customerCoType: '071',
+    customerAddress1: shippingAddress1,
+    customerAddress2: shippingAddress2,
+    customerAddress3: shippingAddress3,
+    customerAddress4: '',
+    customerPoscode: orderData.shippingpostcode,
+    customerPhone: orderData.shippingphone,
+    warehouse: '107',
+    OKSDST: 'ON',
+    saleTeam: 'ON0',
+    OKCFC1: 'ON101',
+    OKCFC3: 'R',
+    OKCFC6: '071',
+    salePayer: 'O00000001',
+    creditLimit: orderData.creditlimit || '0',
+    taxno,
+    saleCode: '11002',
+    saleZone: 'ON',
+    shippings: [
+      {
+        shippingAddress1,
+        shippingAddress2,
+        shippingAddress3,
+        shippingAddress4: '',
+        shippingPoscode: orderData.shippingpostcode,
+        shippingPhone: orderData.shippingphone,
+        shippingRoute: orderData.shippingpostcode,
+        OPGEOX: orderData.lat || '0.0',
+        OPGEOY: orderData.long || '0.0'
+      }
+    ]
+  }
 
-//     // 1️⃣ item ค่าขนส่ง (ของเดิมคุณ)
-//     const discountOnlineSku = 'DISONLINE'
-//     const discountOnlineProductId = 'DISONLINE'
+  await axios.post(`${process.env.API_URL_12ERP}/customer/insert`, payload, {
+    timeout: 15000
+  })
 
-//     const discountOnline = {
-//       itemNumber: baseItemNumber,
-//       id: Number(data.id),
-//       productid: discountOnlineProductId,
-//       procode: '',
-//       sku: discountOnlineSku,
-//       itemCode: discountOnlineSku,
-//       unit: 'PCS',
-//       name: 'DISONLINE',
-//       quantity: 1,
-//       discount: 0,
-//       discountChanel: '',
-//       pricePerUnitOri: Number(data.discountamount),
-//       pricePerUnit: Number(data.discountamount),
-//       totalprice: Number(data.discountamount)
-//     }
-//     โ.push(discountOnline)
-//   }
-
-//   // 5️⃣ update order เดิม
-//   order.paymentstatus = 'Paid'
-//   order.status = data.status || order.status
-//   order.updatedatetime = data.updatedatetime
-//   order.updatedatetimeString = data.updatedatetimeString
-//   order.amount = data.amount
-//   order.vatamount = data.vatamount
-//   order.totalproductamount = data.totalproductamount || data.amount
-//   order.currency = data.currency
-//   order.listProduct = listProduct
-
-//   await order.save()
-//   // console.log(order.listProduct)
-
-//   console.log(`[Webhook] Order ${orderNumber} marked as Paid`)
-// }
+  console.log(`[ERP] Customer inserted ${customerNo}`)
+  return customerNo
+}
 
 exports.handleOrderPaid = async data => {
   const channel = 'uat'
   const { Order } = getModelsByChannel(channel, null, orderModel)
 
-  if (!data || data.paymentstatus !== 'Paid') return
+  // if (!data || data.paymentstatus !== 'Paid') return
 
   const orderId = String(data.id)
   const orderNumber = data.number
@@ -157,6 +146,12 @@ exports.handleOrderPaid = async data => {
   }
 
   let order = await Order.findOne({ id: orderId })
+
+  if (data.customeridnumber) {
+    const customerNo = await insertCustomerToErp(data)
+    console.log(`[ERP] Customer created ${customerNo} (${data.saleschannel})`)
+    data.customercode = customerNo
+  }
 
   // ================================
   // BASE listProduct (ใช้เหมือนกัน)
@@ -212,9 +207,7 @@ exports.handleOrderPaid = async data => {
   // ================================
   // DISCOUNT / VOUCHER
   // ================================
-  const discountValue = Number(
-    data.sellerdiscount
-  )
+  const discountValue = Number(data.sellerdiscount)
 
   if (data.saleschannel == 'Shopee' && data.sellerdiscount > 0) {
     const CODE = 'DISONLINE'
@@ -275,6 +268,62 @@ exports.handleOrderPaid = async data => {
   )
 }
 
-async function handleOrderCancelled (data) {
-  // rollback / mark cancelled
+exports.handleOrderCanceled = async data => {
+  const channel = 'uat'
+  const { Order } = getModelsByChannel(channel, null, orderModel)
+
+  if (!data) return
+
+  // รองรับหลาย case จาก webhook
+  const isCanceled =
+    data.paymentstatus === 'Voided' ||
+    data.status === 'Voided' ||
+    data.status === 'Cancelled' ||
+    data.status === 'Canceled'
+
+  if (!isCanceled) return
+
+  const orderId = String(data.id)
+  const orderNumber = data.number
+
+  if (!orderId || !orderNumber) {
+    throw new Error('Invalid webhook payload (cancel)')
+  }
+
+  let order = await Order.findOne({ id: orderId })
+
+  // ================================
+  // CASE 1: ยังไม่เคยมี order
+  // ================================
+  if (!order) {
+    await Order.create({
+      id: orderId,
+      ...data,
+      paymentstatus: 'Voided',
+      status: 'Voided',
+      statusprint: '000',
+      statusprintinv: '',
+      statusPrininvSuccess: '000',
+      totalprint: 0,
+      listProduct: data.list, // ❌ ยกเลิก ไม่ต้องมีสินค้า
+      cancelReason: data.cancelReason || data.reason || ''
+    })
+
+    console.log(`[Webhook] Order ${orderNumber} created as CANCELED`)
+    return
+  }
+
+  // ================================
+  // CASE 2: มี order อยู่แล้ว → update
+  // ================================
+  order.paymentstatus = 'Voided'
+  order.status = 'Voided'
+  order.cancelReason = data.cancelReason || data.reason || ''
+  order.updatedatetime = data.updatedatetime
+  order.updatedatetimeString = data.updatedatetimeString
+
+  // ไม่ยุ่งกับ listProduct (เผื่อ audit)
+  await order.save()
+
+  console.log(`[Webhook] Order ${orderNumber} marked as CANCELED`)
 }

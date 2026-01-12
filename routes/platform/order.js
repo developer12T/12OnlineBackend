@@ -3,7 +3,8 @@ const {
   getOrder,
   insert,
   removeOrder,
-  getDashboardData
+  getDashboardData,
+  updateStatusM3Success
 } = require('../../controllers/order.controller')
 
 const router = express.Router()
@@ -11,6 +12,7 @@ const router = express.Router()
 router.post('/all', getOrder)
 router.post('/insert', insert)
 router.delete('/delete', removeOrder)
+router.post('/m3/update-status-success', updateStatusM3Success)
 
 router.post('/getDashboardData', getDashboardData)
 // router.post('/insert', getOrder)

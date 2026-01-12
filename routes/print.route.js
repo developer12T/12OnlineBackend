@@ -15,4 +15,11 @@ router.post(
   printController.printReceiptOriginalAndCopy
 )
 
+router.post(
+  '/copy',
+  // auth, // ถ้าต้อง auth
+  printController.printReceiptCopy
+)
+
+
 module.exports = router

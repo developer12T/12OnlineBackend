@@ -1,80 +1,143 @@
 const { getAccessToken } = require('../services/oauth.service')
 const axios = require('axios')
-const orderDataMakro = require('../zort/dataZort/allOrderMakro');
+const orderDataMakro = require('../zort/dataZort/allOrderMakro')
 const orderModel = require('../model/order')
 const customerModel = require('../model/customer')
 const productModel = require('../model/product')
 const { getModelsByChannel } = require('../authen/middleware/channel')
-const generateUniqueId = require('../middleware/order');
-const InvReprint = require('../zort/subController/InvReprint');
-const receiptWaitTab = require('../zort/subController/ReceiptWaitTab');
-const receiptSuccessTab = require('../zort/subController/ReceiptSuccessTab');
-const ReceiptWaitTabPayment = require('../zort/subController/ReceiptWaitTabPayment');
-const AllOrderTab = require('../zort/subController/AllOrderTab');
-const invtWaitTab = require('../zort/subController/InvWaitTab');
+const generateUniqueId = require('../middleware/order')
+const InvReprint = require('../zort/subController/InvReprint')
+const receiptWaitTab = require('../zort/subController/ReceiptWaitTab')
+const receiptSuccessTab = require('../zort/subController/ReceiptSuccessTab')
+const ReceiptWaitTabPayment = require('../zort/subController/ReceiptWaitTabPayment')
+const AllOrderTab = require('../zort/subController/AllOrderTab')
+const invtWaitTab = require('../zort/subController/InvWaitTab')
 const invSuccessTab = require('../zort/subController/InvSuccessTab')
 const M3WaitTab = require('../zort/subController/M3WaitTab')
 const M3SuccessTab = require('../zort/subController/M3SuccessTab')
 
+exports.updateStatusM3Success = async (req, res) => {
+  try {
+    const channel = req.headers['x-channel'] || 'uat'
+    const { Order } = getModelsByChannel(channel, res, orderModel)
 
+    const { successfulOrders } = req.body
 
+    if (!Array.isArray(successfulOrders) || successfulOrders.length === 0) {
+      return res.status(400).json({
+        message: 'successfulOrders is required and must be an array'
+      })
+    }
+
+    // ดึง orderNo ออกมา (อ้างอิง cono)
+    const orderNos = successfulOrders
+      .map(o => String(o.orderNo).trim())
+      .filter(Boolean)
+
+    if (!orderNos.length) {
+      return res.status(400).json({
+        message: 'orderNo not found in successfulOrders'
+      })
+    }
+
+    // update เฉพาะที่ยังไม่ success (กันอัปเดตซ้ำ)
+    const result = await Order.updateMany(
+      {
+        cono: { $in: orderNos },
+        statusM3: { $ne: 'success' }
+      },
+      {
+        $set: {
+          statusM3: 'success'
+        },
+        $currentDate: {
+          updatedAt: true
+        }
+      }
+    )
+
+    return res.json({
+      message: 'update statusM3 success',
+      matched: result.matchedCount ?? result.n,
+      modified: result.modifiedCount ?? result.nModified
+    })
+  } catch (error) {
+    console.error(error)
+    return res.status(500).json({
+      message: 'internal server error'
+    })
+  }
+}
 
 exports.getOrder = async (req, res) => {
   try {
-
     const channel = req.headers['x-channel']
     const { Order } = getModelsByChannel(channel, res, orderModel)
     const { Customer } = getModelsByChannel(channel, res, customerModel)
 
     // console.log("Customer",Customer)
 
-    var page = req.body.page;
-    var tab = req.body.tab;
-
-
+    var page = req.body.page
+    var tab = req.body.tab
 
     if (page == 'receipt') {
       if (tab == 'wait-tab') {
-        receiptWaitTab(res,channel).then(orders => { res.json(orders); })
+        receiptWaitTab(res, channel).then(orders => {
+          res.json(orders)
+        })
       } else if (tab == 'success-tab') {
         console.log('success-tab')
-        receiptSuccessTab(res,channel).then(orders => { res.json(orders); })
+        receiptSuccessTab(res, channel).then(orders => {
+          res.json(orders)
+        })
       } else if (tab == 'payment-tab') {
-        ReceiptWaitTabPayment(res,channel).then(orders => { res.json(orders) })
+        ReceiptWaitTabPayment(res, channel).then(orders => {
+          res.json(orders)
+        })
       }
     } else if (page == 'all') {
-      AllOrderTab(res,channel).then(orders => { res.json(orders); })
+      AllOrderTab(res, channel).then(orders => {
+        res.json(orders)
+      })
       // const data = await Order.findAll()
       // res.json(data)
     } else if (page == 'inv') {
       if (tab == 'wait-tab') {
-        invtWaitTab(res,channel).then(orders => { res.json(orders); })
+        invtWaitTab(res, channel).then(orders => {
+          res.json(orders)
+        })
       } else if (tab == 'success-tab') {
-        invSuccessTab(res,channel).then(orders => { res.json(orders); })
+        invSuccessTab(res, channel).then(orders => {
+          res.json(orders)
+        })
       }
     } else if (page == 'preparem3') {
       if (tab == 'wait-tab') {
-        M3WaitTab(res,channel).then(orders => { res.json(orders); })
+        M3WaitTab(res, channel).then(orders => {
+          res.json(orders)
+        })
       } else if (tab == 'success-tab') {
-        M3SuccessTab(res,channel).then(orders => { res.json(orders); })
+        M3SuccessTab(res, channel).then(orders => {
+          res.json(orders)
+        })
       }
     } else if (page == 'reprint') {
       // รับพารามิเตอร์วันที่จาก request body
-      const { startDate, endDate } = req.body;
-      const dateFilter = { startDate, endDate };
-      InvReprint(res,channel, dateFilter).then(orders => { res.json(orders); })
+      const { startDate, endDate } = req.body
+      const dateFilter = { startDate, endDate }
+      InvReprint(res, channel, dateFilter).then(orders => {
+        res.json(orders)
+      })
     }
 
     // res.status(200).json({
     //   status:200,
     //   message:'getOrder successful'
     // })
-
   } catch (error) {
     // res.status(500).json('invalid data')
-    console.log(error);
+    console.log(error)
   }
-
 }
 
 exports.getOrderBento = async (req, res) => {
@@ -113,42 +176,54 @@ exports.insert = async (req, res) => {
     const { Order } = getModelsByChannel(channel, res, orderModel)
     const { Customer } = getModelsByChannel(channel, res, customerModel)
 
-    const dataMakro = await orderDataMakro();
+    const dataMakro = await orderDataMakro()
     if (!dataMakro || !dataMakro.orders) {
-      return res.status(400).json({ message: "ข้อมูลไม่ถูกต้อง" });
+      return res.status(400).json({ message: 'ข้อมูลไม่ถูกต้อง' })
     }
 
-    const orders = dataMakro.orders;
+    const orders = dataMakro.orders
     for (const order of orders) {
-
-      const existingOrder = await Order.findOne({ where: { number: order.commercial_id } });
+      const existingOrder = await Order.findOne({
+        where: { number: order.commercial_id }
+      })
 
       if (!existingOrder) {
-
-        const newOrderId = await generateUniqueId(channel);
-        const shipping = order.customer.shipping_address || {};
-        const billing = order.customer.billing_address || {};
-        let customer = await Customer.findOne({ where: { customeriderp: order.customer.customer_id } });
-        const customerEmail = order.order_additional_fields?.find(field => field.code === "customer-email")?.value || "";
-        const customerTaxId = order.order_additional_fields?.find(field => field.code === "tax-id")?.value || "";
-        const statusPrintInv = customerTaxId ? "TaxInvoice" : "";
+        const newOrderId = await generateUniqueId(channel)
+        const shipping = order.customer.shipping_address || {}
+        const billing = order.customer.billing_address || {}
+        let customer = await Customer.findOne({
+          where: { customeriderp: order.customer.customer_id }
+        })
+        const customerEmail =
+          order.order_additional_fields?.find(
+            field => field.code === 'customer-email'
+          )?.value || ''
+        const customerTaxId =
+          order.order_additional_fields?.find(field => field.code === 'tax-id')
+            ?.value || ''
+        const statusPrintInv = customerTaxId ? 'TaxInvoice' : ''
 
         if (!customer) {
           customer = await Customer.create({
             customeriderp: order.customer.customer_id,
-            customername: `${billing.firstname || ""} ${billing.lastname || ""}`.trim(),
+            customername: `${billing.firstname || ''} ${
+              billing.lastname || ''
+            }`.trim(),
             customeremail: customerEmail,
-            customerphone: billing?.phone || "",
-            customeraddress: `${billing.street_1 || ""} ${billing.street_2 || ""} ${billing.city || ""} ${billing.state || ""} ${billing.zip_code || ""}`.trim(),
-            customerpostcode: billing?.zip_code || "",
-            customerprovince: billing?.state || "",
-            customerdistrict: billing?.city || "",
-            customersubdistrict: billing?.street_2 || "",
-            customerstreetAddress: billing?.street_1 || "",
+            customerphone: billing?.phone || '',
+            customeraddress: `${billing.street_1 || ''} ${
+              billing.street_2 || ''
+            } ${billing.city || ''} ${billing.state || ''} ${
+              billing.zip_code || ''
+            }`.trim(),
+            customerpostcode: billing?.zip_code || '',
+            customerprovince: billing?.state || '',
+            customerdistrict: billing?.city || '',
+            customersubdistrict: billing?.street_2 || '',
+            customerstreetAddress: billing?.street_1 || '',
             customeridnumber: customerTaxId,
-            createddate: formatDate(order.created_date),
-          }
-          );
+            createddate: formatDate(order.created_date)
+          })
         } else if (!customer.customeridnumber && customerTaxId) {
           //       await customer.update({ customeridnumber: customerTaxId });
           //       console.log(`✅ อัปเดต tax-id ให้ลูกค้า ID: ${customer.customerid} → ${customerTaxId}`);
@@ -164,7 +239,7 @@ exports.insert = async (req, res) => {
             //       shippingprovince: shipping.state || "",
             //       shippingdistrict: shipping.city || "",
             //       shippingsubdistrict: shipping.street_2 || "",
-          });
+          })
 
           //     const newOrder = await Order.create({
           //       id: newOrderId,
@@ -235,19 +310,14 @@ exports.insert = async (req, res) => {
 
           //       console.log(`Added Order Detail SKU: ${orderLine.product_shop_sku}`);
         }
-
       }
     }
 
     res.status(200).json({
       status: 201,
-      message: "Added Order Makro Successfully!",
+      message: 'Added Order Makro Successfully!',
       data: dataMakro
-    });
-
-
-
-
+    })
   } catch (error) {
     console.error(error)
     res.status(500).json({ status: '500', message: error.message })
@@ -267,7 +337,6 @@ exports.removeOrder = async (req, res) => {
   }
 }
 
-
 exports.getDashboardData = async (req, res) => {
   try {
     const channel = req.headers['x-channel']
@@ -275,12 +344,11 @@ exports.getDashboardData = async (req, res) => {
     const { Customer } = getModelsByChannel(channel, res, customerModel)
     const { Product } = getModelsByChannel(channel, res, productModel)
 
-
     const orders = await Order.find()
     const grouped = orders.reduce((acc, order) => {
       // parse string format dd/MM/yyyy
-      const [year, month, day] = order.updatedatetime.split(' ')[0].split('-');
-      const yearInt = parseInt(year, 10);
+      const [year, month, day] = order.updatedatetime.split(' ')[0].split('-')
+      const yearInt = parseInt(year, 10)
 
       if (!acc[yearInt]) {
         acc[yearInt] = {
@@ -289,21 +357,25 @@ exports.getDashboardData = async (req, res) => {
           countShopee: 0,
           countLazada: 0,
           countAmaze: 0,
-          countTiktok: 0,
-        };
+          countTiktok: 0
+        }
       }
 
-      if (order.saleschannel === 'Makro') acc[yearInt].countMakro++;
-      if (order.saleschannel === 'Shopee') acc[yearInt].countShopee++;
-      if (order.saleschannel === 'Lazada') acc[yearInt].countLazada++;
-      if (order.saleschannel === 'Amaze') acc[yearInt].countAmaze++;
-      if (order.saleschannel === 'TIKTOK') acc[yearInt].countTiktok++;
+      if (order.saleschannel === 'Makro') acc[yearInt].countMakro++
+      if (order.saleschannel === 'Shopee') acc[yearInt].countShopee++
+      if (order.saleschannel === 'Lazada') acc[yearInt].countLazada++
+      if (order.saleschannel === 'Amaze') acc[yearInt].countAmaze++
+      if (order.saleschannel === 'TIKTOK') acc[yearInt].countTiktok++
 
-      return acc;
-    }, {});
-    const result = Object.values(grouped).sort((a, b) => a.yearOrder - b.yearOrder);
+      return acc
+    }, {})
+    const result = Object.values(grouped).sort(
+      (a, b) => a.yearOrder - b.yearOrder
+    )
 
-    const countOrderAll = await Order.countDocuments({ status: { $ne: 'Voided' } })
+    const countOrderAll = await Order.countDocuments({
+      status: { $ne: 'Voided' }
+    })
     const countOrderShopee = await Order.countDocuments({
       saleschannel: 'Shopee',
       status: { $ne: 'Voided' }
@@ -322,35 +394,54 @@ exports.getDashboardData = async (req, res) => {
     const StockZort = await Product.find()
 
     const StockZortout = await Product.countDocuments({ stock: 0 })
-    let StockM3 = await axios.post('http://192.168.2.97:8383/M3API/StockManage/Stock/getStockCount');
-    let countStockM3 = (StockM3.data[0].stockerp);
+    let StockM3 = await axios.post(
+      'http://192.168.2.97:8383/M3API/StockManage/Stock/getStockCount'
+    )
+    let countStockM3 = StockM3.data[0].stockerp
 
-    let inv = await axios.post('http://192.168.2.97:8383/M3API/OrderManage/Order/getInvNumber', { ordertype: '071' }, {});
-    let invM3 = (inv.data[0].customerordno);
+    let inv = await axios.post(
+      'http://192.168.2.97:8383/M3API/OrderManage/Order/getInvNumber',
+      { ordertype: '071' },
+      {}
+    )
+    let invM3 = inv.data[0].customerordno
 
-    let cono = await axios.post('http://192.168.2.97:8383/M3API/OrderManage/Order/getNumberSeries', {
-      series: "ง",
-      seriestype: "01",
-      companycode: 410,
-      seriesname: "0"
-    }, {});
-    let conoM3 = (cono.data[0].lastno);
+    let cono = await axios.post(
+      'http://192.168.2.97:8383/M3API/OrderManage/Order/getNumberSeries',
+      {
+        series: 'ง',
+        seriestype: '01',
+        companycode: 410,
+        seriesname: '0'
+      },
+      {}
+    )
+    let conoM3 = cono.data[0].lastno
 
-    let OSPE = await axios.post('http://192.168.2.97:8383/M3API/OrderManage/order/getCustomerInv', {
-      customertype: "107",
-      customercode: "OSPE",
-    }, {});
-    let OSPENO = (OSPE.data[0].customercode);
+    let OSPE = await axios.post(
+      'http://192.168.2.97:8383/M3API/OrderManage/order/getCustomerInv',
+      {
+        customertype: '107',
+        customercode: 'OSPE'
+      },
+      {}
+    )
+    let OSPENO = OSPE.data[0].customercode
 
-    let OLAZ = await axios.post('http://192.168.2.97:8383/M3API/OrderManage/order/getCustomerInv', {
-      customertype: "107",
-      customercode: "OLAZ",
-    }, {});
-    let OLAZNO = (OLAZ.data[0].customercode);
+    let OLAZ = await axios.post(
+      'http://192.168.2.97:8383/M3API/OrderManage/order/getCustomerInv',
+      {
+        customertype: '107',
+        customercode: 'OLAZ'
+      },
+      {}
+    )
+    let OLAZNO = OLAZ.data[0].customercode
 
-    const invZort = await Order
-      .findOne({}, { invno: 1, invM3: 1, _id: 0 })
-      .sort({ invno: -1 })
+    const invZort = await Order.findOne(
+      {},
+      { invno: 1, invM3: 1, _id: 0 }
+    ).sort({ invno: -1 })
 
     const topInvno = invZort?.invno
 
@@ -363,24 +454,23 @@ exports.getDashboardData = async (req, res) => {
       var lastInvThrust = topInvno
     }
 
-    res.json([{
-      'CountByYear': result,
-      'CountOrderAll': countOrderAll,
-      'OrderCountShopee': countOrderShopee,
-      'OrderCountLazada': countOrderLazada,
-      'CountOrderWaitPrint': countOrderWaitPrint,
-      'CountOrderSuccessPrint': countOrderAll - countOrderWaitPrint,
-      'StockZort': StockZort,
-      'WarStock': StockZortout,
-      'StockM3': countStockM3,
-      'InvLastno': lastInvThrust,
-      'conoLastno': conoM3,
-      'cuscodeOspeLastno': OSPENO,
-      'cuscodeOlazLastno': OLAZNO,
-
-
-    }])
-
+    res.json([
+      {
+        CountByYear: result,
+        CountOrderAll: countOrderAll,
+        OrderCountShopee: countOrderShopee,
+        OrderCountLazada: countOrderLazada,
+        CountOrderWaitPrint: countOrderWaitPrint,
+        CountOrderSuccessPrint: countOrderAll - countOrderWaitPrint,
+        StockZort: StockZort,
+        WarStock: StockZortout,
+        StockM3: countStockM3,
+        InvLastno: lastInvThrust,
+        conoLastno: conoM3,
+        cuscodeOspeLastno: OSPENO,
+        cuscodeOlazLastno: OLAZNO
+      }
+    ])
   } catch (error) {
     console.error(error)
     res.status(500).json({ status: '500', message: error.message })

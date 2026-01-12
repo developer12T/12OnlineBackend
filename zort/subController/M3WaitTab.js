@@ -14,9 +14,10 @@ async function M3WaitTab (res, channel) {
     const { Customer } = getModelsByChannel(channel, res, customerModel)
 
     const data = await Order.find({
-    //   statusprint: '000',
-    //   statusPrininvSuccess: '000',
+      //   statusprint: '000',
+      //   statusPrininvSuccess: '000',
       status: { $ne: 'Voided' },
+      statusM3: { $ne: 'success' },
       cono: { $ne: '' },
       invno: { $ne: '' },
       $or: [{ paymentstatus: 'PAY_ON_ACCEPTANCE' }, { paymentstatus: 'Paid' }]

@@ -47,20 +47,19 @@ exports.getOrdersForPrint = async checklist => {
   // 2️⃣ วนจัดการทีละ order (ปลอดภัยสุด)
   for (const order of orders) {
     let invno = order.invno
-    const response = await axios.post(
-      process.env.API_URL_12ERP + '/master/runningNumber',
-      {
-        coNo: 410,
-        series: 'ง',
-        seriesType: '01'
-      }
-    )
-    const cono = response.data.lastNo
-    console.log('cono', cono)
-    const lastNo = cono + 1
-
     // 2.1 ถ้ายังไม่มี invno → generate
     if (!invno) {
+      const response = await axios.post(
+        process.env.API_URL_12ERP + '/master/runningNumber',
+        {
+          coNo: 410,
+          series: 'ง',
+          seriesType: '01'
+        }
+      )
+      const cono = response.data.lastNo
+      console.log('cono', cono)
+
       invno = await getNextRunning('171') // หรือ map ตาม channel
 
       await Order.updateOne(
@@ -80,6 +79,16 @@ exports.getOrdersForPrint = async checklist => {
 
       order.invno = invno
       order.cono = cono
+      const lastNo = cono + 1
+      await axios.post(
+        process.env.API_URL_12ERP + '/master/runningNumber/update',
+        {
+          coNo: 410,
+          series: 'ง',
+          seriesType: '01',
+          lastNo: lastNo
+        }
+      )
     }
 
     // 2.2 update statusprint + totalprint
@@ -96,19 +105,68 @@ exports.getOrdersForPrint = async checklist => {
         $currentDate: { updatedAt: true }
       }
     )
-    await axios.post(
-      process.env.API_URL_12ERP + '/master/runningNumber/update',
-      {
-        coNo: 410,
-        series: 'ง',
-        seriesType: '01',
-        lastNo: lastNo
-      }
-    )
-
+    const now = new Date()
     // sync กลับเข้า memory
     order.statusprint = '001'
     order.statusPrininvSuccess = '001'
+    order.totalprint = (order.totalprint || 0) + 1
+    order.updatedAt = now
+  }
+
+  return orders
+}
+
+/**
+ * พิมพ์สำเนา (Copy)
+ * - ไม่ assign invno
+ * - ไม่ update updatedAt
+ * - ไม่ call ERP
+ * - increment totalprint (ถ้าต้องการนับ)
+ */
+exports.getOrdersForPrintCopy = async checklist => {
+  const channel = 'uat'
+  const { Order } = getModelsByChannel(channel, null, orderModel)
+
+  // 1️⃣ ดึง orders
+  const orders = await Order.find(
+    { id: { $in: checklist } },
+    {
+      id: 1,
+      number: 1,
+      cono: 1,
+      invno: 1,
+      statusprint: 1,
+      totalprint: 1,
+      customername: 1,
+      customercode: 1,
+      customerid: 1,
+      customeridnumber: 1,
+      shippingaddress: 1,
+      shippingphone: 1,
+      createdatetimeString: 1,
+      printdatetimeString: 1,
+      amount: 1,
+      vatamount: 1,
+      totalproductamount: 1,
+      saleschannel: 1,
+      updatedAt: 1,
+      listProduct: 1
+    }
+  )
+    .lean()
+    .sort({ createdatetime: 1 })
+
+  // 2️⃣ update เฉพาะ totalprint (ไม่มี updatedAt)
+  for (const order of orders) {
+    await Order.updateOne(
+      { id: order.id },
+      {
+        $inc: { totalprint: 1 }
+        // ❌ ไม่มี $currentDate
+      }
+    )
+
+    // sync memory
     order.totalprint = (order.totalprint || 0) + 1
   }
 

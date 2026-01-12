@@ -79,6 +79,7 @@ const orderSchema = new mongoose.Schema(
     totalproductamount: { type: Number },
     currency: { type: String },
     statusprint: { type: String, default: '000' },
+    statusM3: { type: String, default: '' },
     totalprint: { type: Number ,default: 0 },
     statusprintinv: { type: String, default: '' },
     statusPrininvSuccess: { type: String, default: '000' },

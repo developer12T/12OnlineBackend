@@ -13,7 +13,7 @@ exports.getOrder = async (req, res) => {
       case 'order_created':
         console.log('order_created')
         // handle order ใหม่
-        await handleOrderCreated(payload)
+        // await handleOrderCreated(payload)
         break
 
       case 'ship':
@@ -25,6 +25,7 @@ exports.getOrder = async (req, res) => {
       case 'cancelled':
         console.log('order_cancelled')
         // handle ยกเลิก
+        await handleOrderPaid(payload)
         // await handleOrderCancelled(payload)
         break
 

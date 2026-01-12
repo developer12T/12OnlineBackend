@@ -65,7 +65,7 @@ async function receiptSuccessTab(res, channel) {
                 var statusText = 'สำเร็จ'
             } else if (row.status === 'Voided') {
                 var statusText = 'ยกเลิก'
-            } else if (row.status === 'Waiting') {
+            } else if (row.status === 'Shipped') {
                 var statusText = 'รอส่ง'
             } else if (row.status === 'Pending') {
                 var statusText = 'รอโอน'
