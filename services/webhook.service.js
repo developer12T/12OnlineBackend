@@ -5,6 +5,13 @@ const { Customer } = require('../model/master')
 const axios = require('axios')
 const { Op } = require('sequelize')
 
+// const orderAmazeAll = require('../dataZort/allOrderAmaze')
+// const { Order, OrderDetail, OrderHis } = require('../model/Order')
+// const { Customer, ShippingAddress } = require('../model/Customer')
+// const { Product } = require('../model/Product')
+
+
+
 function getCustomerPrefix (channel) {
   switch (channel) {
     case 'Shopee':
@@ -326,4 +333,59 @@ exports.handleOrderCanceled = async data => {
   await order.save()
 
   console.log(`[Webhook] Order ${orderNumber} marked as CANCELED`)
+}
+
+exports.handleMakroShippingOrders = async () => {
+  try {
+    console.log('[Makro] Fetch SHIPPING orders start')
+
+    const headers = {
+      Accept: 'application/json',
+      Authorization: process.env.frontKeyMakro
+    }
+
+    // ================================
+    // 1️⃣ ดึงรอบแรก เพื่อรู้ total_count
+    // ================================
+    const firstRes = await axios.get(
+      `${process.env.urlMakro}/api/orders?order_state_codes=SHIPPING&max=100&offset=0&order=asc`,
+      { headers }
+    )
+
+    const totalCount = firstRes.data.total_count || 0
+    let allOrders = [...(firstRes.data.orders || [])]
+
+    if (totalCount === 0) {
+      console.log('[Makro] No SHIPPING orders found')
+      return { total_count: 0, orders: [] }
+    }
+
+    const maxLoop = Math.ceil(totalCount / 100)
+
+    // ================================
+    // 2️⃣ loop ดึง order ที่เหลือ
+    // ================================
+    for (let i = 1; i < maxLoop; i++) {
+      const offset = i * 100
+
+      const res = await axios.get(
+        `${process.env.urlMakro}/api/orders?order_state_codes=SHIPPING&max=100&offset=${offset}&order=asc`,
+        { headers }
+      )
+
+      allOrders.push(...(res.data.orders || []))
+    }
+
+    console.log(
+      `[Makro] Fetch SHIPPING orders success (${allOrders.length}/${totalCount})`
+    )
+
+    return {
+      total_count: totalCount,
+      orders: allOrders
+    }
+  } catch (error) {
+    console.error('[Makro] Fetch SHIPPING orders failed', error.message)
+    throw error
+  }
 }

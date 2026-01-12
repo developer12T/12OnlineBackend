@@ -2,27 +2,68 @@
 require('dotenv').config()
 const jwt = require('jsonwebtoken')
 const axios = require('axios')
+
+/**
+ * Validate ENV early (fail fast)
+ */
+if (!process.env.API_URL) {
+  throw new Error('❌ Missing env: API_URL')
+}
+if (!process.env.TOKEN_KEY) {
+  throw new Error('❌ Missing env: TOKEN_KEY')
+}
+
+const api = axios.create({
+  baseURL: process.env.API_URL.replace(/\/+$/, ''), // ตัด / ท้าย
+  timeout: 30000,
+  headers: {
+    'Content-Type': 'application/json'
+  }
+})
+
+/**
+ * Helper: call API safely (ไม่ล้มทั้ง cron)
+ */
+async function safePut (name, url, payload) {
+  const start = Date.now()
+  try {
+    console.log(`[CRON] ${name} start`)
+    const res = await api.put(url, payload)
+    console.log(
+      `[CRON] ${name} success (${Date.now() - start} ms)`,
+      res?.data ?? ''
+    )
+    return res?.data
+  } catch (err) {
+    console.error(
+      `[CRON] ${name} failed`,
+      err.response?.status,
+      err.response?.data || err.message
+    )
+    return null
+  }
+}
+
 async function zortCronFunc () {
-  const token = jwt.sign(
-    { username: 'systemm3' },
-    // process.env.TOKEN_getDataPrintReceiptKEY,
-    process.env.TOKEN_KEY,
-    { expiresIn: '2h' }
+  // สร้าง token ใหม่ทุกครั้ง (ปลอดภัย)
+  const token = jwt.sign({ username: 'systemm3' }, process.env.TOKEN_KEY, {
+    expiresIn: '2h'
+  })
+
+  const payload = { token }
+
+  // ยิงทีละตัว แยก error ชัด
+  await safePut(
+    'addOrderMakroPro',
+    '/zort/order/OrderManage/addOrderMakroPro',
+    payload
   )
 
-  // const response = await axios.put('http://192.168.2.97:8383/zort/order/OrderManage/addOrderBydate',{ token:token },{});
-  // const response2 = await axios.put('http://192.168.2.97:8383/zort/order/OrderManage/updateStatusOrder',{ token:token },{});
-  // const response3 = await axios.put('http://192.168.2.97:8383/zort/order/OrderManage/addOrderMakroPro',{ token:token }, {});
-  // const response4 = await axios.put('http://192.168.2.97:8383/zort/product/ProductManage/addProduct',{ token:token }, {});
-  // const response4 = await axios.put('http://192.168.2.97:8383/zort/order/OrderManage/addOrderAmaze',{ token:token }, {});
-  // const response5 = await axios.put('http://192.168.2.97:8383/zort/product/ProductManage/addProduct',{ token:token }, {});
-
-  // console.log(response.data);
-  // console.log(response2.data);
-  // console.log(response3.data);
-  // console.log(response4.data);
-
-  // console.log(token);
+  await safePut(
+    'addOrderAmaze',
+    '/zort/order/OrderManage/addOrderAmaze',
+    payload
+  )
 }
 
 module.exports = zortCronFunc

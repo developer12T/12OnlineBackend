@@ -13,7 +13,7 @@ app.use(express.json({ limit: '50mb' }))
 app.use(express.urlencoded({ limit: '50mb' }))
 
 //zort
-// const zort = require('./zort/index')
+const zort = require('./zort/index')
 
 // const PurchaseCustomerOrder = require('./poco/index')
 
@@ -30,7 +30,7 @@ app.use(express.urlencoded({ limit: '50mb' }))
 // const manageUser = require('./manageuser/index')
 
 //zort
-// app.use('/zort',auth,zort)
+app.use('/zort', auth, zort)
 // app.use('/PurchaseCustomerOrder',auth,PurchaseCustomerOrder)
 
 // manageUser

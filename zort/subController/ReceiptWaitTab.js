@@ -20,10 +20,10 @@ async function receiptWaitTab(res, channel) {
             statusprint: '000',
             statusPrininvSuccess: '000',
             status: { $ne: 'Voided' },
-            $or: [
-                { paymentstatus: 'PAY_ON_ACCEPTANCE' },
-                { paymentstatus: 'Paid' }
-            ]
+            // $or: [
+            //     { paymentstatus: 'PAY_ON_ACCEPTANCE' },
+            //     { paymentstatus: 'Paid' }
+            // ]
         })
         // console.log("data",data)
         const orders = [];
@@ -45,7 +45,7 @@ async function receiptWaitTab(res, channel) {
                 ).select("customername customerid customeriderp customercode")
             } else {
                 cusdata = await Customer.findOne(
-                    { customerid: row.customerid },
+                    { customeriderp: row.customerid },
 
                 ).select("customername customerid customeriderp customercode")
             }

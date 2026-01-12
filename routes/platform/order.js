@@ -1,19 +1,17 @@
 const express = require('express')
 const {
   getOrder,
-  insert,
+  // insert,
   removeOrder,
   getDashboardData,
-  updateStatusM3Success
+  updateStatusM3Success,
+  addOrderMakroPro
 } = require('../../controllers/order.controller')
 
 const router = express.Router()
 
 router.post('/all', getOrder)
-router.post('/insert', insert)
 router.delete('/delete', removeOrder)
 router.post('/m3/update-status-success', updateStatusM3Success)
-
-router.post('/getDashboardData', getDashboardData)
-// router.post('/insert', getOrder)
+router.get('/addOrderMakroPro', addOrderMakroPro)
 module.exports = router

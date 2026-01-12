@@ -156,8 +156,8 @@ class ReceiptPDF {
     d.text(String(text || ''), this.mm(x + 1.5), this.mm(y + 1.2), {
       width: this.mm(w - 3),
       height: this.mm(h - 2),
-      align: a,
-      lineBreak: false
+      align: a
+      // lineBreak: false
     })
   }
 
@@ -360,7 +360,6 @@ class ReceiptPDF {
     } else {
       this.cellMm(xR, y0 + 18, wR, h, refLine, 'R', 'L', 12)
     }
-
     // Bottom closing row (y=49)
     this.cellMm(xL, y0 + 24, wL, h, '', 'LBR', 'L', 12)
     this.cellMm(xR, y0 + 24, wR, h, '', 'BR', 'L', 12)

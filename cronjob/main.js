@@ -1,36 +1,29 @@
-const express = require('express');
-const app = express();
-const cron = require('node-cron');
+const cron = require('node-cron')
+const zortCronFunc = require('./zortCorn')
 
-const zortCronFunc = require('./zortCorn');
+let count = 0
 
-let count = 0;
-// cron.schedule('*/5 * * * *',async () => {
-//     const startTime = new Date();
-//     count++;
-//     zortCronFunc();
-//   const endTime = new Date();
-//   const elapsedTime = (endTime - startTime) / 1000; // เวลาในหน่วยวินาที
+console.log('🕒 CRON BOOTED:', new Date().toISOString())
 
-//   console.log(`Cron job has run ${count} times.`);
-//   console.log(`Start time: ${startTime}`);
-//   console.log(`End time: ${endTime}`);
-//   console.log(`Elapsed time: ${elapsedTime} seconds`);
-  
-// });
+cron.schedule(
+  '*/5 * * * *',
+  async () => {
+    const startTime = new Date()
+    count++
 
-cron.schedule('*/5 * * * *',async () => {
-  const startTime = new Date();
-  count++;
-  zortCronFunc();
-const endTime = new Date();
-const elapsedTime = (endTime - startTime) / 1000; // เวลาในหน่วยวินาที
+    console.log(`[CRON] tick #${count} at ${startTime.toISOString()}`)
 
-console.log(`Cron job has run ${count} times.`);
-console.log(`Start time: ${startTime}`);
-console.log(`End time: ${endTime}`);
-console.log(`Elapsed time: ${elapsedTime} seconds`);
+    try {
+      await zortCronFunc()
+      console.log('[CRON] zortCronFunc done')
+    } catch (err) {
+      console.error('[CRON] zortCronFunc error:', err)
+    }
 
-});
+    const endTime = new Date()
+    console.log('[CRON] elapsed sec:', (endTime - startTime) / 1000)
+  },
+  { timezone: 'Asia/Bangkok' }
+)
 
-
+module.exports = {} // กันเผลอ
