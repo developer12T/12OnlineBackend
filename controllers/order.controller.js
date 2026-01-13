@@ -15,6 +15,8 @@ const invtWaitTab = require('../zort/subController/InvWaitTab')
 const invSuccessTab = require('../zort/subController/InvSuccessTab')
 const M3WaitTab = require('../zort/subController/M3WaitTab')
 const M3SuccessTab = require('../zort/subController/M3SuccessTab')
+const { Customer } = require('../model/master')
+const { Op } = require('sequelize')
 
 exports.updateStatusM3Success = async (req, res) => {
   try {
@@ -327,24 +329,159 @@ const formatDate = isoDate => {
   return isoDate ? new Date(isoDate).toISOString().split('T')[0] : null
 }
 
-// const generateUniqueId = async () => {
-//   let uniqueId
-//   let exists
+async function generateCustomerNo () {
+  const prefix = 'OMKP'
 
-//   do {
-//     uniqueId = parseInt(uuidv4().replace(/\D/g, '').slice(0, 9), 10)
+  const lastCustomer = await Customer.findOne({
+    where: {
+      customerNo: {
+        [Op.like]: `${prefix}%`
+      }
+    },
+    order: [['customerNo', 'DESC']], // 👈 Sequelize ใช้แบบนี้
+    attributes: ['customerNo'],
+    raw: true
+  })
 
-//     if (uniqueId > 2147483647) {
-//       uniqueId = (uniqueId % 2000000000) + 100000000
-//     }
+  let nextNumber = 1
 
-//     exists =
-//       (await Order.findOne({ where: { id: uniqueId } })) ||
-//       (await OrderHis.findOne({ where: { id: uniqueId } }))
-//   } while (exists)
+  if (lastCustomer?.customerNo) {
+    const lastNo = lastCustomer.customerNo.replace(prefix, '')
+    nextNumber = Number(lastNo) + 1
+  }
 
-//   return uniqueId
+  const padded = String(nextNumber).padStart(6, '0')
+  return `${prefix}${padded}`
+}
+
+// function splitShippingAddress4 (address = '') {
+//   const text = String(address).trim()
+//   const chunkSize = 36
+
+//   return {
+//     shippingAddress1: text.substring(0, chunkSize) || '',
+//     shippingAddress2: text.substring(chunkSize, chunkSize * 2) || '',
+//     shippingAddress3: text.substring(chunkSize * 2, chunkSize * 3) || '',
+//     shippingAddress4: text.substring(chunkSize * 3, chunkSize * 4) || ''
+//   }
 // }
+
+function normalizeSpaces (text = '') {
+  return String(text)
+    .replace(/[\u00A0\u2000-\u200B\u202F\u205F\u3000]/g, ' ') // 🔥 Unicode spaces
+    .replace(/\s+/g, ' ') // รวม space ปกติ
+    .trim()
+}
+
+function splitShippingAddress4 (address = '') {
+  const cleanText = normalizeSpaces(address)
+  const chunkSize = 36
+
+  return {
+    shippingAddress1: cleanText.slice(0, chunkSize),
+    shippingAddress2: cleanText.slice(chunkSize, chunkSize * 2),
+    shippingAddress3: cleanText.slice(chunkSize * 2, chunkSize * 3),
+    shippingAddress4: cleanText.slice(chunkSize * 3, chunkSize * 4)
+  }
+}
+
+async function findCustomerByTaxNo (taxno) {
+  if (!taxno) return null
+
+  return Customer.findOne({
+    where: { taxno },
+    attributes: ['customerNo', 'taxno'],
+    raw: true
+  })
+}
+
+async function insertCustomerToErp (orderData) {
+  console.log(orderData)
+  const customerTaxId = orderData.order_additional_fields?.find(
+    f => f.code === 'tax-id'
+  )?.value
+
+  const taxno = typeof customerTaxId === 'string' ? customerTaxId.trim() : ''
+
+  // 1️⃣ เช็คว่ามีลูกค้าอยู่แล้วหรือยัง
+  // const existingCustomer = await findCustomerByTaxNo(taxno)
+
+  // if (existingCustomer) {
+  //   console.log(`[ERP] Customer already exists ${existingCustomer.customerNo}`)
+  //   return existingCustomer.customerNo
+  // }
+
+  const billing = orderData.customer.billing_address || {}
+
+  // 2️⃣ ยังไม่มี → generate ใหม่
+  const customerNo = await generateCustomerNo()
+
+  const shippingAddress = [
+    billing?.street_1,
+    billing?.street_2,
+    billing?.city,
+    billing?.state,
+    billing?.zip_code
+  ]
+    .filter(v => typeof v === 'string' && v.trim())
+    .join(' ')
+  const {
+    shippingAddress1,
+    shippingAddress2,
+    shippingAddress3,
+    shippingAddress4
+  } = splitShippingAddress4(shippingAddress)
+
+  const customername = `${billing.firstname || ''} ${
+    billing.lastname || ''
+  }`.trim()
+
+  const payload = {
+    Hcase: 1,
+    customerNo,
+    customerStatus: '20',
+    customerName: customername,
+    customerChannel: '107',
+    customerCoType: '071',
+    customerAddress1: shippingAddress1,
+    customerAddress2: shippingAddress2,
+    customerAddress3: shippingAddress3,
+    customerAddress4: '',
+    customerPoscode: billing?.zip_code || '',
+    customerPhone: billing?.phone || '',
+    warehouse: '107',
+    OKSDST: 'ON',
+    saleTeam: 'ON0',
+    OKCFC1: 'ON101',
+    OKCFC3: 'R',
+    OKCFC6: '071',
+    salePayer: 'O00000001',
+    creditLimit: orderData.creditlimit || '0',
+    taxno,
+    saleCode: '11002',
+    saleZone: 'ON',
+    shippings: [
+      {
+        shippingAddress1,
+        shippingAddress2,
+        shippingAddress3,
+        shippingAddress4: '',
+        shippingPoscode: billing?.zip_code ?? '',
+        shippingPhone: billing?.phone ?? '',
+        shippingRoute: billing?.zip_code ?? '',
+        OPGEOX: orderData.lat || '0.0',
+        OPGEOY: orderData.long || '0.0'
+      }
+    ]
+  }
+
+  await axios.post(`${process.env.API_URL_12ERP}/customer/insert`, payload, {
+    timeout: 15000
+  })
+
+  console.log(`[ERP] Customer inserted ${customerNo}`)
+  return customerNo
+}
 
 exports.addOrderMakroPro = async (req, res) => {
   try {
@@ -435,6 +572,13 @@ exports.addOrderMakroPro = async (req, res) => {
         ''
 
       const statusPrintInv = customerTaxId ? 'TaxInvoice' : ''
+      let customercodeNew
+
+      if (customerTaxId) {
+        const customerNo = await insertCustomerToErp(order)
+        console.log(`[ERP] Customer created ${customerNo}`)
+        customercodeNew = customerNo
+      }
 
       let customer = await Customer.findOne({
         where: { customeriderp: order.customer.customer_id }
@@ -444,7 +588,7 @@ exports.addOrderMakroPro = async (req, res) => {
         customer = await Customer.create({
           // customerid: order,
           customeriderp: order.customer.customer_id,
-          customercode: customerTaxId ? '' : 'OMKP000000',
+          customercode: customercodeNew ? customercodeNew : 'OMKP000000',
           customername: `${billing.firstname || ''} ${
             billing.lastname || ''
           }`.trim(),
@@ -491,33 +635,25 @@ exports.addOrderMakroPro = async (req, res) => {
       // ================================
       const listProduct = []
 
-      // for (const line of order.order_lines) {
-      //   const product = await Product.findOne({
-      //     where: { sku: line.product_shop_sku }
-      //   })
-
-      //   if (!product) {
-      //     console.warn(`SKU not found: ${line.product_shop_sku}`)
-      //     continue
-      //   }
-
-      //   listProduct.push({
-      //     itemNumber: line.line_number || 1,
-      //     id: Number(newOrderId),
-      //     productid: String(product.id),
-      //     procode: product.procode || '',
-      //     sku: line.product_shop_sku,
-      //     itemCode: product.itemcode || '',
-      //     unit: product.unittext || '',
-      //     name: product.name,
-      //     quantity: line.quantity,
-      //     discount: line.price - line.total_price || 0,
-      //     discountChanel: '',
-      //     pricePerUnitOri: line.price_unit,
-      //     pricePerUnit: line.price_unit,
-      //     totalprice: line.total_price
-      //   })
-      // }
+      for (const line of order.order_lines) {
+        const [code, suffix] = line.product_shop_sku.split('_')
+        listProduct.push({
+          itemNumber: line.line_number || 1,
+          // id: order.order_id,
+          productid: line.offer_id,
+          procode: line.procode || '',
+          sku: line.product_shop_sku,
+          itemCode: code || '',
+          unit: suffix || '',
+          name: line.product_title,
+          quantity: line.quantity,
+          discount: 0,
+          discountChanel: '',
+          pricePerUnitOri: line.price_unit,
+          pricePerUnit: line.price_unit,
+          totalprice: line.total_price
+        })
+      }
 
       // ================================
       // 6. Create Order (Mongo)

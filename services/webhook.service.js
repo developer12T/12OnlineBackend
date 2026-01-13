@@ -10,8 +10,6 @@ const { Op } = require('sequelize')
 // const { Customer, ShippingAddress } = require('../model/Customer')
 // const { Product } = require('../model/Product')
 
-
-
 function getCustomerPrefix (channel) {
   switch (channel) {
     case 'Shopee':
@@ -71,17 +69,18 @@ async function findCustomerByTaxNo (taxno) {
     raw: true
   })
 }
+
 async function insertCustomerToErp (orderData) {
   const taxno = orderData.customeridnumber?.trim()
   if (!taxno) return null
 
-  // 1️⃣ เช็คว่ามีลูกค้าอยู่แล้วหรือยัง
-  const existingCustomer = await findCustomerByTaxNo(taxno)
+  // // 1️⃣ เช็คว่ามีลูกค้าอยู่แล้วหรือยัง
+  // const existingCustomer = await findCustomerByTaxNo(taxno)
 
-  if (existingCustomer) {
-    console.log(`[ERP] Customer already exists ${existingCustomer.customerNo}`)
-    return existingCustomer.customerNo
-  }
+  // if (existingCustomer) {
+  //   console.log(`[ERP] Customer already exists ${existingCustomer.customerNo}`)
+  //   return existingCustomer.customerNo
+  // }
 
   // 2️⃣ ยังไม่มี → generate ใหม่
   const customerNo = await generateCustomerNo(orderData.saleschannel)

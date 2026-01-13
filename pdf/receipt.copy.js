@@ -298,7 +298,7 @@ class ReceiptPDF {
     }
     const docDate = formatDateYYYYMMDD(data.updatedAt)
     const HEADER_LAST_Y = 21
-    const HEADER_TABLE_GAP = 9
+    const HEADER_TABLE_GAP = 4
     const TABLE_START_Y = HEADER_LAST_Y + HEADER_TABLE_GAP
     // Use exact mm positions per PHP:
     // left block at x=10, y=25; width 88; height 6 lines
@@ -338,9 +338,14 @@ class ReceiptPDF {
 
     // Row 3-4 (Address as MultiCell in PHP)
     // In PHP it uses multiCell(88,6, 'ที่อยู่: ...', 'LR', 0); then an empty multiCell row for padding.
-    const addrText = this.wrapAddress2Lines(`${data.shippingaddress}`)
+    const addrText = `ที่อยู่: ${data.shippingaddress || ''}`
 
-    this.multiCellMm(xL, y0 + 12, wL, 6, addrText, 'LR', 'L', 12)
+    const usedH = this.multiCellMm(xL, y0 + 12, wL, 6, addrText, 'LR', 'L', 12)
+
+    // บังคับให้สูงอย่างน้อย 12 mm (เหมือน PHP)
+    if (usedH < 12) {
+      this.drawBordersMm(xL, y0 + 12 + usedH, wL, 12 - usedH, 'LR')
+    }
 
     // Ensure at least 12 mm area like PHP (it effectively ends at y=43)
     // PHP: after address multiCell, it sets XY(10,43) and multiCell empty 88,6 'LR'
@@ -352,15 +357,14 @@ class ReceiptPDF {
 
     // Reference wrapping logic (PHP checks GetStringWidth > 45)
     const refLine = `เลขที่อ้างอิง: ${data.number}`
-    const wRef = this.getTextWidthMm(refLine, 12)
+    const wRef = this.getTextWidthMm(refLine, 15)
 
     if (wRef > wR) {
       this.cellMm(xR, y0 + 18, wR, h, 'เลขที่อ้างอิง:', 'R', 'L', 12)
-      this.cellMm(xR, y0 + 24, wR, h, `${data.number}`, 'R', 'L', 12)
+      this.multiCellMm(xR, y0 + 23, wR, h, `${data.number}`, 'R', 'L', 12)
     } else {
-      this.cellMm(xR, y0 + 18, wR, h, refLine, 'R', 'L', 12)
+      this.multiCellMm(xR, y0 + 18, wR, h, refLine, 'R', 'L', 12)
     }
-
     // Bottom closing row (y=49)
     this.cellMm(xL, y0 + 24, wL, h, '', 'LBR', 'L', 12)
     this.cellMm(xR, y0 + 24, wR, h, '', 'BR', 'L', 12)

@@ -20,7 +20,7 @@ async function M3WaitTab (res, channel) {
       statusM3: { $ne: 'success' },
       cono: { $ne: '' },
       invno: { $ne: '' },
-      $or: [{ paymentstatus: 'PAY_ON_ACCEPTANCE' }, { paymentstatus: 'Paid' }]
+      // $or: [{ paymentstatus: 'PAY_ON_ACCEPTANCE' }, { paymentstatus: 'Paid' }]
     })
     // console.log("data",data)
     const orders = []
