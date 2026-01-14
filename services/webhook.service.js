@@ -244,7 +244,7 @@ exports.handleOrderPaid = async data => {
     }
 
     // 🔢 3) รวมยอดใหม่ทั้ง order
-    recalculatedAmount = sumOrderAmount(listProduct)
+    // recalculatedAmount = sumOrderAmount(listProduct)
   }
 
   // ================================
@@ -299,6 +299,7 @@ function recalcListProductTotal (listProduct = []) {
 
     return {
       ...item,
+      pricePerUnit: item.pricePerUnitOri,
       totalprice: qty * priceOri
     }
   })
