@@ -287,10 +287,9 @@ exports.handleOrderPaid = async data => {
 }
 
 function sumOrderAmount (listProduct = []) {
-  return listProduct.reduce(
-    (sum, item) => sum + Number(item.totalprice || 0),
-    0
-  )
+  return listProduct
+    .filter(item => item.sku !== 'DISONLINE')
+    .reduce((sum, item) => sum + Number(item.totalprice || 0), 0)
 }
 
 function recalcListProductTotal (listProduct = []) {
