@@ -183,7 +183,7 @@ exports.handleOrderPaid = async data => {
       }))
     : []
 
-  const listProduct = [...baseList]
+  let listProduct = [...baseList]
 
   // ================================
   // SHIPPING
@@ -270,11 +270,12 @@ exports.handleOrderPaid = async data => {
   order.status = data.status || order.status
   order.updatedatetime = data.updatedatetime
   order.updatedatetimeString = data.updatedatetimeString
-  order.amount = data.amount
   order.vatamount = data.vatamount
-  order.totalproductamount = data.totalproductamount || data.amount
   order.currency = data.currency
   order.listProduct = listProduct
+  order.amount = recalculatedAmount ?? data.amount
+  order.totalproductamount =
+    recalculatedAmount ?? data.totalproductamount ?? data.amount
   // order.statusprint = '000'
 
   await order.save()
