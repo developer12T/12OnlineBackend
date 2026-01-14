@@ -45,14 +45,14 @@ module.exports = (res, orders = []) => {
   const list = Array.isArray(orders) && orders.length ? orders : [{}]
 
   let currentPageNumber = 1
-  console.log('Generating receipt original PDF for', orders, 'orders')
+//   console.log('Generating receipt original PDF for', orders, 'orders')
   for (let i = 0; i < list.length; i++) {
     if (i > 0) doc.addPage()
     const pdf = new ReceiptPDF(doc, {
       mmToPt: MM_TO_PT,
       pageNumber: currentPageNumber
     })
-    pdf.setCopyType('ต้นฉบับ')
+    pdf.setCopyType('สำเนา')
     pdf.invoice(list[i]) // no data mapping yet, placeholders
     currentPageNumber++
   }
@@ -256,7 +256,7 @@ class ReceiptPDF {
     // บรรทัดขวา (กึ่งกลางระหว่าง 13 กับ 17)
     d.font('THSarabunNew_Bold').fontSize(14)
     d.text(
-      'ต้นฉบับบิลเงินสด / ใบกำกับภาษี',
+      'สำเนาเงินสด / ใบกำกับภาษี',
       this.mm(10),
       this.mm(15), // ⭐ จุดสำคัญ
       {

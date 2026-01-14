@@ -213,10 +213,17 @@ exports.handleOrderPaid = async data => {
   // ================================
   // DISCOUNT / VOUCHER
   // ================================
-  const discountValue = Number(data.sellerdiscount)
 
-  if (data.saleschannel == 'Shopee' && data.sellerdiscount > 0) {
+  let recalculatedAmount = null // default = ไม่คิดใหม่
+
+  if (data.saleschannel === 'Shopee' && Number(data.sellerdiscount) > 0) {
     const CODE = 'DISONLINE'
+    const discountValue = Number(data.sellerdiscount)
+
+    // 🔁 1) คิด totalprice ใหม่จาก pricePerUnitOri * quantity
+    listProduct = recalcListProductTotal(listProduct)
+
+    // ➕ 2) เพิ่ม DISONLINE (เป็นบวกได้ เพราะระบบไปหักเอง)
     if (!listProduct.some(p => p.itemCode === CODE)) {
       listProduct.push({
         itemNumber: listProduct.length + 1,
@@ -235,6 +242,9 @@ exports.handleOrderPaid = async data => {
         totalprice: discountValue
       })
     }
+
+    // 🔢 3) รวมยอดใหม่ทั้ง order
+    recalculatedAmount = sumOrderAmount(listProduct)
   }
 
   // ================================
@@ -244,6 +254,7 @@ exports.handleOrderPaid = async data => {
     await Order.create({
       id: orderId,
       ...data,
+      amount: recalculatedAmount ?? data.amount,
       paymentstatus: 'Paid',
       statusprint: '000',
       statusprintinv: '',
@@ -272,6 +283,25 @@ exports.handleOrderPaid = async data => {
     `[Webhook] Order ${orderNumber} updated`,
     listProduct.map(p => p.itemCode)
   )
+}
+
+function sumOrderAmount (listProduct = []) {
+  return listProduct.reduce(
+    (sum, item) => sum + Number(item.totalprice || 0),
+    0
+  )
+}
+
+function recalcListProductTotal (listProduct = []) {
+  return listProduct.map(item => {
+    const qty = Number(item.quantity || 0)
+    const priceOri = Number(item.pricePerUnitOri || 0)
+
+    return {
+      ...item,
+      totalprice: qty * priceOri
+    }
+  })
 }
 
 exports.handleOrderCanceled = async data => {
