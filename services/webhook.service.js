@@ -196,8 +196,14 @@ exports.handleOrderPaid = async data => {
 
     if (skuSuffix === 'Free') {
       item.procode = 'FV2F'
+      item.pricePerUni  = 0
+      item.pricePerUnitOri = 0
+      item.totalprice = 0
     } else if (skuSuffix === 'Premium') {
       item.procode = 'FV2P'
+      item.pricePerUni = 0
+      item.pricePerUnitOri = 0
+      item.totalprice = 0
     }
   }
 
