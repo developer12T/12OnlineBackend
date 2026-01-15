@@ -17,7 +17,88 @@ const M3WaitTab = require('../zort/subController/M3WaitTab')
 const M3SuccessTab = require('../zort/subController/M3SuccessTab')
 const { Customer } = require('../model/master')
 const { Op } = require('sequelize')
+const ExcelJS = require('exceljs')
+const moment = require('moment')
 
+exports.exportOrderExcel = async (req, res) => {
+  try {
+    const channel = req.headers['x-channel']
+    const { Order } = getModelsByChannel(channel, res, orderModel)
+
+    const { period } = req.query // ✅ รับ period
+
+    let query = {}
+
+    // ==========================
+    // 🔹 filter ตาม period
+    // ==========================
+    if (period) {
+      const startDate = moment(period, 'YYYYMM').startOf('month').toDate()
+      const endDate = moment(period, 'YYYYMM').endOf('month').toDate()
+
+      query.createdAt = { $gte: startDate, $lte: endDate }
+    }
+
+    // ==========================
+    // 🔹 query Order
+    // ==========================
+
+    const orders = await Order.find(query).sort({ createdAt: -1 })
+
+    // ==========================
+    // 🔹 Excel
+    // ==========================
+    const workbook = new ExcelJS.Workbook()
+    const worksheet = workbook.addWorksheet('Orders')
+
+    worksheet.columns = [
+      { header: 'CO', key: 'cono', width: 20 },
+      { header: 'Invoice', key: 'invno', width: 20 },
+      { header: 'Number', key: 'number', width: 30 },
+      { header: 'Amount', key: 'amount', width: 15 },
+      { header: 'Ex Vat', key: 'examount', width: 15 },
+      { header: 'Discount Amount', key: 'discountamount', width: 15 },
+      { header: 'Order Date', key: 'createdAt', width: 15 },
+      { header: 'Order Print', key: 'updatedAt', width: 20 }
+    ]
+
+    orders.forEach(order => {
+      worksheet.addRow({
+        cono: order.cono,
+        invno: order.invno || '-',
+        number: order.number || '-',
+        amount: order.amount || 0,
+        examount: order.amount || 0,
+        discountamount: order.discountamount || '-',
+        createdAt: moment(order.createdAt).format('YYYY-MM-DD HH:mm'),
+        updatedAt: moment(order.createdAt).format('YYYY-MM-DD HH:mm')
+      })
+    })
+
+    worksheet.getRow(1).font = { bold: true }
+
+    // ==========================
+    // 🔹 response
+    // ==========================
+    res.setHeader(
+      'Content-Type',
+      'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+    )
+    res.setHeader(
+      'Content-Disposition',
+      `attachment; filename=orders_${period || 'all'}.xlsx`
+    )
+
+    await workbook.xlsx.write(res)
+    res.end()
+  } catch (err) {
+    console.error(err)
+    res.status(500).json({
+      message: 'Export excel failed',
+      error: err.message
+    })
+  }
+}
 exports.updateStatusM3Success = async (req, res) => {
   try {
     const channel = req.headers['x-channel'] || 'uat'

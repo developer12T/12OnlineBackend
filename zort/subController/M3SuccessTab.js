@@ -19,9 +19,9 @@ async function M3SuccessTab (res, channel) {
       status: { $ne: 'Voided' },
       statusM3: { $eq: 'success' },
       cono: { $ne: '' },
-      invno: { $ne: '' },
-    //   $or: [{ paymentstatus: 'PAY_ON_ACCEPTANCE' }, { paymentstatus: 'Paid' }]
-    })
+      invno: { $ne: '' }
+      //   $or: [{ paymentstatus: 'PAY_ON_ACCEPTANCE' }, { paymentstatus: 'Paid' }]
+    }).sort({ updatedAt: -1 })
     // console.log("data",data)
     const orders = []
 
@@ -51,6 +51,7 @@ async function M3SuccessTab (res, channel) {
         unit: item.sku.split('_')[1],
         name: item.name,
         number: item.quantity,
+        discount: item.discount,
         pricepernumber: item.pricePerUnit,
         totalprice: item.totalprice
       }))
@@ -85,6 +86,7 @@ async function M3SuccessTab (res, channel) {
         // printdatetime: currentDateTime,
         number: row.number,
         customerid: row.customerid,
+        customercode: row.customercode,
         status: row.status,
         statusText: statusText,
         paymentstatus: row.paymentstatus,
