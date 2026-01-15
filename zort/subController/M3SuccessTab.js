@@ -17,6 +17,7 @@ async function M3SuccessTab (res, channel) {
       //   statusprint: '000',
       //   statusPrininvSuccess: '000',
       status: { $ne: 'Voided' },
+      status: { $ne: 'Cancelled' },
       statusM3: { $eq: 'success' },
       cono: { $ne: '' },
       invno: { $ne: '' }

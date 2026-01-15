@@ -56,19 +56,28 @@ exports.exportOrderExcel = async (req, res) => {
       { header: 'Invoice', key: 'invno', width: 20 },
       { header: 'Number', key: 'number', width: 20 },
       { header: 'Amount', key: 'amount', width: 12 },
+      { header: 'VAT amount', key: 'vatAmount', width: 12 },
       { header: 'Ex Vat', key: 'examount', width: 12 },
       { header: 'Discount Amount', key: 'discountamount', width: 12 },
       { header: 'Order Date', key: 'createdAt', width: 15 },
       { header: 'Order Print', key: 'updatedAt', width: 15 }
     ]
 
+    const round2 = n => Math.round((Number(n) + Number.EPSILON) * 100) / 100
+
     orders.forEach(order => {
+      const amount = order?.amount || 0
+      const baseAmount = round2(amount / 1.07)
+      const vatAmount = round2(amount - baseAmount)
+      const examount = baseAmount
+
       worksheet.addRow({
         cono: order.cono,
         invno: order.invno || '-',
         number: order.number || '-',
         amount: order.amount || 0,
-        examount: (order.amount ?? 0) - (order.vatamount ?? 0),
+        examount: examount,
+        vatAmount: vatAmount,
         discountamount: order.discountamount || '-',
         createdAt: moment(order.createdAt).format('YYYY-MM-DD HH:mm'),
         updatedAt: moment(order.createdAt).format('YYYY-MM-DD HH:mm')

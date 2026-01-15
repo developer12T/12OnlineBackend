@@ -17,6 +17,7 @@ async function M3WaitTab (res, channel) {
       //   statusprint: '000',
       //   statusPrininvSuccess: '000',
       status: { $ne: 'Voided' },
+      status: { $ne: 'Cancelled' },
       statusM3: { $ne: 'success' },
       cono: { $ne: '' },
       invno: { $ne: '' }
@@ -45,17 +46,27 @@ async function M3WaitTab (res, channel) {
       }
       const cuss = cusdata?.customername || ''
 
-      const items = itemData.listProduct.map(item => ({
-        productid: item.productid,
-        sku: item.sku.split('_')[0],
-        unit: item.sku.split('_')[1],
-        name: item.name,
-        number: item.quantity,
-        discount: item.discount,
-        pricepernumber: item.pricePerUnit,
-        pricepernumberOri: item.pricePerUnitOri,
-        totalprice: item.totalprice
-      }))
+      const items = itemData.listProduct.map(item => {
+        const skuParts = item.sku.split('_').filter(Boolean)
+        const skuSuffix = skuParts.at(-1) // Free / Premium / CRT / ฯลฯ
+
+        return {
+          productid: item.productid,
+          sku: skuParts[0], // รหัสสินค้า
+          unit:
+            skuSuffix === 'Free' || skuSuffix === 'Premium'
+              ? 'PCS'
+              : skuParts[1] || '',
+          name: item.name,
+          number: item.quantity,
+          discount: item.discount,
+          procode: item.procode,
+          pricepernumber: item.pricePerUnit,
+          pricepernumberOri: item.pricePerUnitOri,
+          totalprice: item.totalprice
+        }
+      })
+
 
       const totalprint = row.totalprint ?? 0
       const taxInStatus =
