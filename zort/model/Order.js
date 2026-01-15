@@ -1,6 +1,6 @@
 const { sequelize, DataTypes } = require('../config/database')
 
-const Order = sequelize.define(
+const OrderZort = sequelize.define(
   'order',
   {
     id: { type: DataTypes.INTEGER, allowNull: false, primaryKey: true },
@@ -755,7 +755,7 @@ const LogOrderInSuccessM3 = sequelize.define(
   }
 )
 
-Order.hasMany(OrderDetail, {
+OrderZort.hasMany(OrderDetail, {
   foreignKey: 'id',
   targetKey: 'id'
 })
@@ -767,7 +767,7 @@ OrderHis.hasMany(OrderDetailHis, {
 
 // sequelize.sync({force:false,alter:false})
 module.exports = {
-  Order,
+  OrderZort,
   OrderDetail,
   OrderHis,
   OrderDetailHis,

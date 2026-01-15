@@ -21,7 +21,7 @@ const zort = require('./zort/index')
 // const M3API = require('./M3API/index')
 
 //authen
-// const loginToken = require('./authen/login')
+const loginToken = require('./authen/login')
 // const loginTokenAnt = require('./authen/loginAnt')
 // const devLoginToken = require('./authen/devlogin')
 // const checkToken = require('./authen/checkToken')
@@ -45,7 +45,7 @@ app.use('/zort', auth, zort)
 // app.use('/12Trading',devLoginToken)
 // app.use('/12Trading',auth,checkToken)
 
-// require('./cronjob/main')
+require('./cronjob/main')
 
 // =============================
 // API Metrics Middleware

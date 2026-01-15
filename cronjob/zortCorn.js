@@ -28,7 +28,7 @@ async function safePut (name, url, payload) {
   const start = Date.now()
   try {
     console.log(`[CRON] ${name} start`)
-    const res = await api.put(url, payload)
+    const res = await api.get(url, payload)
     console.log(
       `[CRON] ${name} success (${Date.now() - start} ms)`,
       res?.data ?? ''
@@ -55,15 +55,15 @@ async function zortCronFunc () {
   // ยิงทีละตัว แยก error ชัด
   await safePut(
     'addOrderMakroPro',
-    '/zort/order/OrderManage/addOrderMakroPro',
+    '/online/api/order/addOrderMakroPro',
     payload
   )
 
-  await safePut(
-    'addOrderAmaze',
-    '/zort/order/OrderManage/addOrderAmaze',
-    payload
-  )
+  // await safePut(
+  //   'addOrderAmaze',
+  //   '/zort/order/OrderManage/addOrderAmaze',
+  //   payload
+  // )
 }
 
 module.exports = zortCronFunc

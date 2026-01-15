@@ -16,9 +16,82 @@ const invSuccessTab = require('../zort/subController/InvSuccessTab')
 const M3WaitTab = require('../zort/subController/M3WaitTab')
 const M3SuccessTab = require('../zort/subController/M3SuccessTab')
 const { Customer } = require('../model/master')
+const { OrderZort } = require('../zort/model/Order')
 const { Op } = require('sequelize')
 const ExcelJS = require('exceljs')
 const moment = require('moment')
+
+exports.updateInvoiceAndCo = async (req, res) => {
+  try {
+    const channel = req.headers['x-channel']
+    const { Order } = getModelsByChannel(channel, res, orderModel)
+
+    // 1) ดึง Order จาก MSSQL (Zort)
+    const zortOrders = await OrderZort.findAll({
+      where: {
+        status: { [Op.ne]: 'Voided' },
+        updatedatetime: { [Op.gte]: '2026-01-01' }
+      },
+      raw: true
+    })
+
+    if (!zortOrders.length) {
+      return res.json({
+        message: 'No Zort orders to update',
+        updated: 0
+      })
+    }
+
+    // 2) เตรียม bulk update สำหรับ Mongo
+    const bulkOps = []
+
+    for (const z of zortOrders) {
+      if (!z.number) continue
+
+      bulkOps.push({
+        updateOne: {
+          filter: { number: String(z.number) }, // ให้ชัวร์ type ตรงกัน
+          update: {
+            $set: {
+              invno: z.invno,
+              // invoiceDate: z.invoice_date || z.invoiceDate,
+              cono: z.cono ,
+
+              // --- status ที่ขอ ---
+              statusM3: 'success',
+              statusprint: '001',
+              statusPrininvSuccess: '001'
+              // updatedAt: new Date()
+            }
+          }
+        }
+      })
+    }
+
+    if (!bulkOps.length) {
+      return res.json({
+        message: 'No valid orders to update',
+        updated: 0
+      })
+    }
+
+    // 3) bulkWrite เข้า Mongo
+    const result = await Order.bulkWrite(bulkOps)
+
+    return res.json({
+      message: 'Update completed',
+      zortTotal: zortOrders.length,
+      matched: result.matchedCount,
+      modified: result.modifiedCount
+    })
+  } catch (error) {
+    console.error('[updateInvoiceAndCo]', error)
+    return res.status(500).json({
+      message: 'Update failed',
+      error: error.message
+    })
+  }
+}
 
 exports.exportOrderExcel = async (req, res) => {
   try {
@@ -108,6 +181,7 @@ exports.exportOrderExcel = async (req, res) => {
     })
   }
 }
+
 exports.updateStatusM3Success = async (req, res) => {
   try {
     const channel = req.headers['x-channel'] || 'uat'

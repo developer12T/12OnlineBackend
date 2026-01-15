@@ -105,7 +105,7 @@ async function insertCustomerToErp (orderData) {
     customerAddress4: '',
     customerPoscode: orderData.shippingpostcode,
     customerPhone: orderData.shippingphone,
-    warehouse: '107',
+    warehouse: '108',
     OKSDST: 'ON',
     saleTeam: 'ON0',
     OKCFC1: 'ON101',

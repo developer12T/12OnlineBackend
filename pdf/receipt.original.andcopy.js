@@ -46,7 +46,7 @@ module.exports = (res, orders = []) => {
 
   let currentPageNumber = 1
   // console.log('Generating receipt original PDF for', orders, 'orders')
-  const copies = ['ต้นฉบับ', 'สำเนา']
+  const copies = ['', 'สำเนา']
 
   for (let i = 0; i < list.length; i++) {
     for (let c = 0; c < copies.length; c++) {
