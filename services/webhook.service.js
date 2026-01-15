@@ -186,6 +186,22 @@ exports.handleOrderPaid = async data => {
   let listProduct = [...baseList]
 
   // ================================
+  // SET PROCODE FOR FREE / PREMIUM
+  // ================================
+  for (const item of listProduct) {
+    if (!item?.sku) continue
+
+    const parts = item.sku.split('_').filter(Boolean)
+    const skuSuffix = parts.at(-1) // Free / Premium
+
+    if (skuSuffix === 'Free') {
+      item.procode = 'FV2F'
+    } else if (skuSuffix === 'Premium') {
+      item.procode = 'FV2P'
+    }
+  }
+
+  // ================================
   // SHIPPING
   // ================================
   if (Number(data.shippingamount) > 0) {

@@ -54,12 +54,12 @@ exports.exportOrderExcel = async (req, res) => {
     worksheet.columns = [
       { header: 'CO', key: 'cono', width: 20 },
       { header: 'Invoice', key: 'invno', width: 20 },
-      { header: 'Number', key: 'number', width: 30 },
-      { header: 'Amount', key: 'amount', width: 15 },
-      { header: 'Ex Vat', key: 'examount', width: 15 },
-      { header: 'Discount Amount', key: 'discountamount', width: 15 },
+      { header: 'Number', key: 'number', width: 20 },
+      { header: 'Amount', key: 'amount', width: 12 },
+      { header: 'Ex Vat', key: 'examount', width: 12 },
+      { header: 'Discount Amount', key: 'discountamount', width: 12 },
       { header: 'Order Date', key: 'createdAt', width: 15 },
-      { header: 'Order Print', key: 'updatedAt', width: 20 }
+      { header: 'Order Print', key: 'updatedAt', width: 15 }
     ]
 
     orders.forEach(order => {
@@ -68,7 +68,7 @@ exports.exportOrderExcel = async (req, res) => {
         invno: order.invno || '-',
         number: order.number || '-',
         amount: order.amount || 0,
-        examount: order.amount || 0,
+        examount: (order.amount ?? 0) - (order.vatamount ?? 0),
         discountamount: order.discountamount || '-',
         createdAt: moment(order.createdAt).format('YYYY-MM-DD HH:mm'),
         updatedAt: moment(order.createdAt).format('YYYY-MM-DD HH:mm')
