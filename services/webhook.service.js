@@ -292,7 +292,7 @@ exports.handleOrderPaid = async data => {
     }
   }
 
-  if (data.saleschannel === 'Shopee' && Number(data.sellerdiscount) > 0) {
+  if (data.saleschannel === 'Shopee' && (Number(data.sellerdiscount) > 0 || Number(data.discount))) {
     const CODE = 'DISONLINE'
     const discountValue = Number(data.sellerdiscount + data.discount)
 
