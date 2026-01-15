@@ -186,6 +186,32 @@ exports.handleOrderPaid = async data => {
   let listProduct = [...baseList]
 
   // ================================
+  // ADJUST SELLER DISCOUNT FOR FREE / PREMIUM
+  // ================================
+  let sellerDiscount = Number(data.sellerdiscount ?? 0)
+
+  for (const item of listProduct) {
+    if (!item?.sku) continue
+
+    const parts = item.sku.split('_').filter(Boolean)
+    const skuSuffix = parts.at(-1) // Free / Premium
+
+    if (skuSuffix === 'Free' || skuSuffix === 'Premium') {
+      const oriPrice = Number(item.pricePerUnitOri ?? 0)
+
+      if (oriPrice > 0) {
+        sellerDiscount -= oriPrice
+      }
+    }
+  }
+
+  // ป้องกันติดลบ
+  if (sellerDiscount < 0) sellerDiscount = 0
+
+  // เขียนค่ากลับ (ใช้ค่าที่ถูกปรับแล้ว)
+  data.sellerdiscount = sellerDiscount
+
+  // ================================
   // SET PROCODE FOR FREE / PREMIUM
   // ================================
   for (const item of listProduct) {
