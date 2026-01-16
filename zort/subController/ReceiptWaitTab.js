@@ -15,9 +15,9 @@ async function receiptWaitTab (res, channel) {
 
     const data = await Order.find({
     //   statusM3: '000',
-    //   statusPrininvSuccess: '000',
+      statusprint: '000',
       statusM3: { $ne: 'success' },
-    //   status: { $ne: 'Cancelled' }
+      status: { $ne: 'Cancelled' }
       // $or: [
       //     { paymentstatus: 'PAY_ON_ACCEPTANCE' },
       //     { paymentstatus: 'Paid' }

@@ -21,6 +21,14 @@ const { Op } = require('sequelize')
 const ExcelJS = require('exceljs')
 const moment = require('moment')
 
+const fs = require('fs')
+const path = require('path')
+const AdmZip = require('adm-zip')
+const printer = require('pdf-to-printer')
+const { v4: uuidv4 } = require('uuid')
+const unzipper = require('unzipper')
+const { PDFDocument } = require('pdf-lib')
+
 exports.updateInvoiceAndCo = async (req, res) => {
   try {
     const channel = req.headers['x-channel']
@@ -55,7 +63,7 @@ exports.updateInvoiceAndCo = async (req, res) => {
             $set: {
               invno: z.invno,
               // invoiceDate: z.invoice_date || z.invoiceDate,
-              cono: z.cono ,
+              cono: z.cono,
 
               // --- status ที่ขอ ---
               statusM3: 'success',
@@ -665,6 +673,7 @@ exports.addOrderMakroPro = async (req, res) => {
 
     for (let i = 1; i < maxLoop; i++) {
       const offset = i * 100
+
       const resPage = await axios.get(
         `${process.env.urlMakro}/api/orders?order_state_codes=SHIPPING&max=100&offset=${offset}&order=asc`,
         {
@@ -1140,4 +1149,127 @@ exports.addOrderAmaze = async (req, res) => {
       }
     }
   } catch (error) {}
+}
+
+
+exports.printDeliveyMackro = async (req, res) => {
+  try {
+    /**
+     * body:
+     * {
+     *   "orderIds": ["MAKROPRO14782193B-A", "MAKROPRO28414732B-A"]
+     * }
+     */
+    const { orderIds } = req.body
+
+    if (!Array.isArray(orderIds) || orderIds.length === 0) {
+      return res.status(400).json({ message: 'orderIds is required' })
+    }
+
+    // ===============================
+    // 1️⃣ Temp paths
+    // ===============================
+    const tempRoot = path.join(
+      process.env.TEMP || 'C:/Temp',
+      `makro-doc-${uuidv4()}`
+    )
+    const zipPath = path.join(tempRoot, 'documents.zip')
+    const extractPath = path.join(tempRoot, 'pdfs')
+
+    fs.mkdirSync(extractPath, { recursive: true })
+
+    // ===============================
+    // 2️⃣ Download ZIP (STREAM)
+    // ===============================
+    const downloadUrl = `${
+      process.env.urlMakro
+    }/api/orders/documents/download?order_ids=${orderIds.join(',')}`
+
+    const response = await axios.get(downloadUrl, {
+      responseType: 'stream',
+      headers: {
+        Accept: 'application/octet-stream',
+        Authorization: process.env.frontKeyMakro
+      }
+    })
+
+    await new Promise((resolve, reject) => {
+      response.data
+        .pipe(fs.createWriteStream(zipPath))
+        .on('finish', resolve)
+        .on('error', reject)
+    })
+
+    // ===============================
+    // 3️⃣ Extract ZIP
+    // ===============================
+    await fs
+      .createReadStream(zipPath)
+      .pipe(unzipper.Extract({ path: extractPath }))
+      .promise()
+
+    // ===============================
+    // 4️⃣ Map PDF ต่อ order
+    // ===============================
+    const filesByOrder = {}
+    const pdfListForMerge = []
+    const notFound = []
+
+    for (const orderId of orderIds) {
+      const pdfPath = getPdfPathByOrder(extractPath, orderId)
+
+      if (!pdfPath) {
+        notFound.push(orderId)
+        continue
+      }
+
+      filesByOrder[orderId] = `file:///${pdfPath.replace(/\\/g, '/')}`
+      pdfListForMerge.push(pdfPath)
+    }
+
+    if (pdfListForMerge.length === 0) {
+      return res.status(404).json({ message: 'No PDF files found' })
+    }
+
+    // ===============================
+    // 5️⃣ Merge PDF
+    // ===============================
+    const mergedPdf = await PDFDocument.create()
+
+    for (const pdfPath of pdfListForMerge) {
+      const bytes = fs.readFileSync(pdfPath)
+      const pdf = await PDFDocument.load(bytes)
+      const pages = await mergedPdf.copyPages(pdf, pdf.getPageIndices())
+      pages.forEach(p => mergedPdf.addPage(p))
+    }
+
+    const mergedPath = path.join(extractPath, `MAKRO_MERGED_${Date.now()}.pdf`)
+
+    const mergedBytes = await mergedPdf.save()
+    fs.writeFileSync(mergedPath, mergedBytes)
+
+    // ===============================
+    // 6️⃣ Response to frontend
+    // ===============================
+    res.json({
+      success: true,
+      files: filesByOrder, // 👈 PDF แยกต่อ order
+      mergedFile: `file:///${mergedPath.replace(/\\/g, '/')}`,
+      notFound
+    })
+  } catch (error) {
+    console.error('[printDeliveyMackro]', error)
+    res.status(500).json({ message: 'Internal server error' })
+  }
+}
+
+const getPdfPathByOrder = (extractRoot, orderId) => {
+  const orderDir = path.join(extractRoot, orderId)
+  if (!fs.existsSync(orderDir)) return null
+
+  const pdfFile = fs
+    .readdirSync(orderDir)
+    .find(f => f.toLowerCase().endsWith('.pdf'))
+
+  return pdfFile ? path.join(orderDir, pdfFile) : null
 }

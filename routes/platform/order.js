@@ -7,12 +7,14 @@ const {
   updateStatusM3Success,
   addOrderMakroPro,
   exportOrderExcel,
-  updateInvoiceAndCo
+  updateInvoiceAndCo,
+  printDeliveyMackro
 } = require('../../controllers/order.controller')
 
 const router = express.Router()
 
 router.post('/all', getOrder)
+router.post('/printDeliveyMackro', printDeliveyMackro)
 router.delete('/delete', removeOrder)
 router.post('/getDashboardData', getDashboardData)
 router.post('/m3/update-status-success', updateStatusM3Success)
