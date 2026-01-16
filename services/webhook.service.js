@@ -264,6 +264,8 @@ exports.handleOrderPaid = async data => {
 
   let recalculatedAmount = null // default = ไม่คิดใหม่
 
+  const hasItemDiscount = listProduct.some(i => Number(i.discount || 0) > 0)
+
   if (data.saleschannel === 'Lazada') {
     if (hasItemDiscount) {
       // ✅ Lazada หักมาแล้วระดับ item
