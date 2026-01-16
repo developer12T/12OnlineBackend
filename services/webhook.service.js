@@ -264,34 +264,34 @@ exports.handleOrderPaid = async data => {
 
   let recalculatedAmount = null // default = ไม่คิดใหม่
 
-  if (data.saleschannel === 'Lazada' && Number(data.discount) > 0) {
-    const CODE = 'DISONLINE'
-    const discount = Number(data.discount)
-    const sellerdiscount = Number(data.sellerdiscount)
+  if (data.saleschannel === 'Lazada') {
+    if (hasItemDiscount) {
+      // ✅ Lazada หักมาแล้วระดับ item
+      // ใช้ totalprice ตามที่ได้มา
+      console.log('[DISCOUNT] Lazada item-level discount detected')
+    } else {
+      // ❗ Lazada บางเคสไม่มี item discount → ค่อยใช้ discountValue
+      const CODE = 'DISONLINE'
+      const discountValue =
+        Number(data.discount || 0) + Number(data.sellerdiscount || 0)
 
-    const discountValue = Number(discount + sellerdiscount)
+      listProduct = recalcListProductTotal(listProduct)
 
-    // 🔁 1) คิด totalprice ใหม่จาก pricePerUnitOri * quantity
-    listProduct = recalcListProductTotal(listProduct)
-
-    // ➕ 2) เพิ่ม DISONLINE (เป็นบวกได้ เพราะระบบไปหักเอง)
-    if (!listProduct.some(p => p.itemCode === CODE)) {
-      listProduct.push({
-        itemNumber: listProduct.length + 1,
-        id: Number(orderId),
-        productid: CODE,
-        procode: '',
-        sku: CODE,
-        itemCode: CODE,
-        unit: 'PCS',
-        name: 'DISONLINE',
-        quantity: 1,
-        discount: 0,
-        discountChanel: '',
-        pricePerUnitOri: discountValue,
-        pricePerUnit: discountValue,
-        totalprice: discountValue
-      })
+      if (discountValue > 0 && !listProduct.some(p => p.itemCode === CODE)) {
+        listProduct.push({
+          itemNumber: listProduct.length + 1,
+          id: Number(orderId),
+          productid: CODE,
+          sku: CODE,
+          itemCode: CODE,
+          unit: 'PCS',
+          name: 'DISONLINE',
+          quantity: 1,
+          pricePerUnitOri: discountValue,
+          pricePerUnit: discountValue,
+          totalprice: discountValue
+        })
+      }
     }
   }
 
