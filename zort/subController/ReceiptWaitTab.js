@@ -14,10 +14,10 @@ async function receiptWaitTab (res, channel) {
     const { Customer } = getModelsByChannel(channel, res, customerModel)
 
     const data = await Order.find({
-      statusprint: '000',
-      statusPrininvSuccess: '000',
-      status: { $ne: 'Voided' },
-      status: { $ne: 'Cancelled' }
+    //   statusM3: '000',
+    //   statusPrininvSuccess: '000',
+      statusM3: { $ne: 'success' },
+    //   status: { $ne: 'Cancelled' }
       // $or: [
       //     { paymentstatus: 'PAY_ON_ACCEPTANCE' },
       //     { paymentstatus: 'Paid' }

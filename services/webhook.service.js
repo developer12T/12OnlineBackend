@@ -222,7 +222,7 @@ exports.handleOrderPaid = async data => {
 
     if (skuSuffix === 'Free') {
       item.procode = 'FV2F'
-      item.pricePerUni  = 0
+      item.pricePerUni = 0
       item.pricePerUnitOri = 0
       item.totalprice = 0
     } else if (skuSuffix === 'Premium') {
@@ -266,7 +266,10 @@ exports.handleOrderPaid = async data => {
 
   if (data.saleschannel === 'Lazada' && Number(data.discount) > 0) {
     const CODE = 'DISONLINE'
-    const discountValue = Number(data.sellerdiscount + data.discount)
+    const discount = Number(data.discount)
+    const sellerdiscount = Number(data.sellerdiscount)
+
+    const discountValue = Number(discount + sellerdiscount)
 
     // 🔁 1) คิด totalprice ใหม่จาก pricePerUnitOri * quantity
     listProduct = recalcListProductTotal(listProduct)
@@ -292,9 +295,14 @@ exports.handleOrderPaid = async data => {
     }
   }
 
-  if (data.saleschannel === 'Shopee' && (Number(data.sellerdiscount) > 0 || Number(data.discount))) {
+  if (
+    data.saleschannel === 'Shopee' &&
+    (Number(data.sellerdiscount) > 0 || Number(data.discount))
+  ) {
     const CODE = 'DISONLINE'
-    const discountValue = Number(data.sellerdiscount + data.discount)
+    const discount = Number(data.discount)
+    const sellerdiscount = Number(data.sellerdiscount)
+    const discountValue = Number(discount + sellerdiscount)
 
     // 🔁 1) คิด totalprice ใหม่จาก pricePerUnitOri * quantity
     listProduct = recalcListProductTotal(listProduct)
@@ -368,14 +376,32 @@ function sumOrderAmount (listProduct = []) {
     .reduce((sum, item) => sum + Number(item.totalprice || 0), 0)
 }
 
+// function recalcListProductTotal (listProduct = []) {
+//   return listProduct.map(item => {
+//     const qty = Number(item.quantity || 0)
+//     const priceOri = Number(item.pricePerUnitOri || 0)
+
+//     return {
+//       ...item,
+//       pricePerUnit: item.pricePerUnitOri,
+//       totalprice: qty * priceOri
+//     }
+//   })
+// }
+
 function recalcListProductTotal (listProduct = []) {
   return listProduct.map(item => {
+    // ❗ ข้าม DISONLINE และค่าขนส่ง
+    if (['DISONLINE', 'ZNS1401001_JOB'].includes(item.itemCode)) {
+      return item
+    }
+
     const qty = Number(item.quantity || 0)
     const priceOri = Number(item.pricePerUnitOri || 0)
 
     return {
       ...item,
-      pricePerUnit: item.pricePerUnitOri,
+      pricePerUnit: priceOri,
       totalprice: qty * priceOri
     }
   })
