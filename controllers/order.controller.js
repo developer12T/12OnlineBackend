@@ -1263,6 +1263,7 @@ exports.printDeliveyMackro = async (req, res) => {
   }
 }
 
+
 const getPdfPathByOrder = (extractRoot, orderId) => {
   const orderDir = path.join(extractRoot, orderId)
   if (!fs.existsSync(orderDir)) return null
