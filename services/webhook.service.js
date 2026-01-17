@@ -228,7 +228,7 @@ exports.handleOrderPaid = async data => {
     const newQty = qtyPack * multiplier
 
     // ราคาสุทธิหลังหักส่วนลดสินค้า
-    const netItemAmount = total - discount
+    const netItemAmount = total + discount
 
     const pricePerUnitOri = netItemAmount / newQty
 
