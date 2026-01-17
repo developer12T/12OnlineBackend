@@ -28,6 +28,30 @@ exports.printReceiptOriginal = async (req, res) => {
   }
 }
 
+exports.printReceiptOriginal2 = async (req, res) => {
+  try {
+    const checklistRaw = req.body.checklist
+    const checklist = Array.isArray(checklistRaw)
+      ? checklistRaw
+      : JSON.parse(checklistRaw)
+
+    if (!Array.isArray(checklist) || checklist.length === 0) {
+      return res.status(400).end()
+    }
+
+    // 🔥 PREPARE (หนัก แต่ทำครั้งเดียว)
+    await printService.prepareOrdersForPrint(checklist)
+
+    // 🔥 PRINT (เบา)
+    const orders = await printService.getOrdersForPrint2(checklist)
+
+    return generateReceiptOriginal(res, orders)
+  } catch (error) {
+    console.error('printReceiptOriginal error:', error)
+    if (!res.headersSent && !res.writableEnded) res.status(500).end()
+  }
+}
+
 exports.printReceiptOriginalNotUpdate = async (req, res) => {
   try {
     const checklistRaw = req.body.checklist
@@ -53,7 +77,6 @@ exports.printReceiptOriginalNotUpdate = async (req, res) => {
   }
 }
 
-
 exports.printReceiptCopy = async (req, res) => {
   try {
     const checklistRaw = req.body.checklist
@@ -78,7 +101,6 @@ exports.printReceiptCopy = async (req, res) => {
     }
   }
 }
-
 
 exports.printReceiptOriginalAndCopy = async (req, res) => {
   try {

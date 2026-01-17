@@ -2,6 +2,81 @@ const orderModel = require('../model/order')
 const { getModelsByChannel } = require('../authen/middleware/channel')
 const { getNextRunning } = require('../services/runningNumber.service')
 const axios = require('axios')
+
+exports.prepareOrdersForPrint = async checklist => {
+  const channel = 'uat'
+  const { Order } = getModelsByChannel(channel, null, orderModel)
+
+  const orders = await Order.find(
+    { id: { $in: checklist }, invno: { $in: [null, '', undefined] } },
+    { id: 1 }
+  ).lean()
+
+  for (const order of orders) {
+    // ⚠️ ทำเฉพาะที่ยังไม่เคย prepare
+    const response = await axios.post(
+      process.env.API_URL_12ERP + '/master/runningNumber',
+      { coNo: 410, series: 'ง', seriesType: '01' }
+    )
+
+    const cono = response.data.lastNo
+    const invno = await getNextRunning('171')
+
+    await Order.updateOne(
+      { id: order.id, invno: { $in: [null, '', undefined] } },
+      {
+        $set: {
+          invno,
+          cono,
+          printdatetimeString: new Date().toISOString(),
+          statusprint: '001',
+          statusPrininvSuccess: '001'
+        },
+        $inc: { totalprint: 1 },
+        $currentDate: { updatedAt: true }
+      }
+    )
+
+    await axios.post(
+      process.env.API_URL_12ERP + '/master/runningNumber/update',
+      {
+        coNo: 410,
+        series: 'ง',
+        seriesType: '01',
+        lastNo: cono + 1
+      }
+    )
+  }
+}
+
+
+exports.getOrdersForPrint2 = async checklist => {
+  const channel = 'uat'
+  const { Order } = getModelsByChannel(channel, null, orderModel)
+
+  return Order.find(
+    { id: { $in: checklist } },
+    {
+      id: 1,
+      number: 1,
+      cono: 1,
+      invno: 1,
+      discount: 1,
+      amount: 1,
+      vatamount: 1,
+      customername: 1,
+      customercode: 1,
+      customeridnumber: 1,
+      shippingaddress: 1,
+      updatedAt: 1,
+      listProduct: 1
+    }
+  )
+    .lean()
+    .sort({ createdatetime: 1 })
+}
+
+
 /**
  * ดึง order สำหรับพิมพ์
  * - assign invno (ถ้ายังไม่มี)
@@ -114,6 +189,32 @@ exports.getOrdersForPrint = async checklist => {
   }
 
   return orders
+}
+
+exports.getOrdersForPrint2 = async checklist => {
+  const channel = 'uat'
+  const { Order } = getModelsByChannel(channel, null, orderModel)
+
+  return Order.find(
+    { id: { $in: checklist } },
+    {
+      id: 1,
+      number: 1,
+      cono: 1,
+      invno: 1,
+      discount: 1,
+      amount: 1,
+      vatamount: 1,
+      customername: 1,
+      customercode: 1,
+      customeridnumber: 1,
+      shippingaddress: 1,
+      updatedAt: 1,
+      listProduct: 1
+    }
+  )
+    .lean()
+    .sort({ createdatetime: 1 })
 }
 
 /**

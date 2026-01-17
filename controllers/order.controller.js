@@ -1151,6 +1151,20 @@ exports.addOrderAmaze = async (req, res) => {
   } catch (error) {}
 }
 
+exports.streamMakroPdf = (req, res) => {
+  const { token } = req.params
+  const record = makroPdfStore.get(token)
+
+  if (!record || !fs.existsSync(record.path)) {
+    return res.status(404).json({ message: 'PDF not found' })
+  }
+
+  res.setHeader('Content-Type', 'application/pdf')
+  res.setHeader('Content-Disposition', 'inline; filename="MAKRO_DELIVERY.pdf"')
+
+  const stream = fs.createReadStream(record.path)
+  stream.pipe(res)
+}
 
 exports.printDeliveyMackro = async (req, res) => {
   try {
@@ -1161,6 +1175,8 @@ exports.printDeliveyMackro = async (req, res) => {
      * }
      */
     const { orderIds } = req.body
+    const makroPdfStore = new Map()
+    const token = uuidv4()
 
     if (!Array.isArray(orderIds) || orderIds.length === 0) {
       return res.status(400).json({ message: 'orderIds is required' })
@@ -1216,7 +1232,7 @@ exports.printDeliveyMackro = async (req, res) => {
     const notFound = []
 
     for (const orderId of orderIds) {
-      const pdfPath = getPdfPathByOrder(extractPath, orderId)
+      const pdfPath = getSecondPdfPathByOrder(extractPath, orderId)
 
       if (!pdfPath) {
         notFound.push(orderId)
@@ -1251,10 +1267,23 @@ exports.printDeliveyMackro = async (req, res) => {
     // ===============================
     // 6️⃣ Response to frontend
     // ===============================
+
+    makroPdfStore.set(token, {
+      path: mergedPath,
+      createdAt: Date.now()
+    })
+
+    // res.json({
+    //   success: true,
+    //   files: filesByOrder, // 👈 PDF แยกต่อ order
+    //   mergedFile: `file:///${mergedPath.replace(/\\/g, '/')}`,
+    //   notFound
+    // })
+
     res.json({
       success: true,
-      files: filesByOrder, // 👈 PDF แยกต่อ order
-      mergedFile: `file:///${mergedPath.replace(/\\/g, '/')}`,
+      pdfUrl: `/online/api/order/makro/pdf/${token}`,
+      totalOrders: pdfListForMerge.length,
       notFound
     })
   } catch (error) {
@@ -1263,14 +1292,22 @@ exports.printDeliveyMackro = async (req, res) => {
   }
 }
 
+//
 
-const getPdfPathByOrder = (extractRoot, orderId) => {
+const getSecondPdfPathByOrder = (extractRoot, orderId) => {
   const orderDir = path.join(extractRoot, orderId)
   if (!fs.existsSync(orderDir)) return null
 
-  const pdfFile = fs
+  const candidates = fs
     .readdirSync(orderDir)
-    .find(f => f.toLowerCase().endsWith('.pdf'))
+    .filter(f => f.toLowerCase().endsWith('.pdf'))
+    .filter(f => !f.toLowerCase().includes('delivery'))
+    .map(f => ({
+      name: f,
+      fullPath: path.join(orderDir, f),
+      size: fs.statSync(path.join(orderDir, f)).size
+    }))
+    .sort((a, b) => b.size - a.size)
 
-  return pdfFile ? path.join(orderDir, pdfFile) : null
+  return candidates[0]?.fullPath || null
 }
