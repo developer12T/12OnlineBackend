@@ -212,26 +212,31 @@ exports.handleOrderPaid = async data => {
   data.sellerdiscount = sellerDiscount
 
   // ================================
-  // NORMALIZE PACK FOR ERP (USE NET PACK PRICE)
+  // NORMALIZE PACK FOR ERP (FIXED)
   // ================================
   for (const item of listProduct) {
     const multiplier = Number(item?.sku?.split?.('_')?.[2]) || 1
     if (multiplier <= 1) continue
 
-    const qtyPack = Number(item.quantity || 0) / multiplier || 1
+    const qtyPack = Number(item.quantity || 0) // 👈 จำนวนแพ็คจริง
     const total = Number(item.totalprice || 0)
     const discount = Number(item.discount || 0)
 
-    // ราคาสุทธิหลังหักส่วนลดสินค้า (ต่อแพ็ค)
-    const netPackAmount = (total - discount) / qtyPack
+    if (!qtyPack || !total) continue
 
-    const pricePerUnitOri = netPackAmount / multiplier
+    // แตกแพ็ค → PCS
+    const newQty = qtyPack * multiplier
 
+    // ราคาสุทธิหลังหักส่วนลดสินค้า
+    const netItemAmount = total - discount
+
+    const pricePerUnitOri = netItemAmount / newQty
+
+    item.quantity = newQty // ✅ จุดที่หายไป
     item.pricePerUnitOri = pricePerUnitOri
     item.pricePerUnit = pricePerUnitOri
-    item.totalprice = total // คงเดิม
+    item.totalprice = total // คงราคาก่อน platform discount
   }
-
   // ================================
   // SET PROCODE FOR FREE / PREMIUM
   // ================================
