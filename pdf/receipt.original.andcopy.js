@@ -432,6 +432,27 @@ class ReceiptPDF {
     return isNaN(n) ? '0.00' : n.toFixed(2)
   }
 
+  getUnitFromSku (sku = '') {
+    if (!sku) return 'หน่วย'
+
+    // แยก subsku เช่น 10013601003_PCS_4_ → PCS
+    const parts = String(sku).split('_').filter(Boolean)
+    const subsku = parts[1] // ตำแหน่งเดียวกับ PHP logic
+
+    const units = {
+      PCS: 'ชิ้น',
+      CTN: 'หีบ',
+      BOT: 'ขวด',
+      CRT: 'กล่อง',
+      BAG: 'ถุง',
+      PAC: 'แพ็ค',
+      Free: 'ชิ้น',
+      JOB: 'งาน'
+    }
+
+    return units[subsku] || 'หน่วย'
+  }
+
   // ===== Invoice (like PHP Invoice) =====
   invoice (data) {
     // Page header/footer happen per page in FPDF automatically; we call explicitly.
@@ -487,7 +508,16 @@ class ReceiptPDF {
       cx += 10
 
       // unit
-      this.cellMm(cx, y, 10, rowH, 'ชิ้น', 'L', 'C', 12)
+      this.cellMm(
+        cx,
+        y,
+        10,
+        rowH,
+        this.getUnitFromSku(items[i]?.sku),
+        'L',
+        'C',
+        12
+      )
       cx += 10
 
       // price

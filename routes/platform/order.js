@@ -8,7 +8,8 @@ const {
   addOrderMakroPro,
   exportOrderExcel,
   updateInvoiceAndCo,
-  printDeliveyMackro
+  printDeliveyMackro,
+  streamMakroPdf
 } = require('../../controllers/order.controller')
 
 const router = express.Router()
@@ -21,4 +22,7 @@ router.post('/m3/update-status-success', updateStatusM3Success)
 router.get('/addOrderMakroPro', addOrderMakroPro)
 router.get('/export/excel', exportOrderExcel)
 router.get('/updateInvoiceAndCo', updateInvoiceAndCo)
+
+// ✅ ต้องมีบรรทัดนี้
+router.get('/makro/pdf/:token', streamMakroPdf)
 module.exports = router

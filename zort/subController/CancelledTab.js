@@ -1,11 +1,6 @@
-const express = require('express')
-const getOrder = express.Router()
-const { Op } = require('sequelize')
-const { Order, OrderDetail } = require('../model/Order')
-const { Customer } = require('../model/Customer')
-const { getModelsByChannel } = require('../../authen/middleware/channel')
 const orderModel = require('../../model/order')
 const customerModel = require('../../model/customer')
+const { getModelsByChannel } = require('../../authen/middleware/channel')
 
 function getThaiDayRange (day) {
   return {
@@ -14,31 +9,31 @@ function getThaiDayRange (day) {
   }
 }
 
-async function receiptSuccessTab (res, channel, body = {}) {
+async function CancelledTab (res, channel, body) {
   try {
     const { Order } = getModelsByChannel(channel, res, orderModel)
-    const { date } = body
-    console.log(body)
+    const { Customer } = getModelsByChannel(channel, res, customerModel)
+
+    const { date } = body // '2026-01-17'
 
     let dateCondition = {}
+
     if (date) {
       const { start, end } = getThaiDayRange(date)
-      dateCondition.updatedAt = { $gte: start, $lte: end }
+      dateCondition.updatedAt = {
+        $gte: start,
+        $lte: end
+      }
     }
 
-    // 1️⃣ ดึง Order อย่างเดียว
+    console.log(dateCondition)
+
     const data = await Order.find({
-      $or: [
-        { statusprint: '001' },
-        { statusprint: '002' },
-        { statusPrininvSuccess: '001' },
-        { statusPrininvSuccess: '002' }
-      ],
+      status: 'Cancelled',
       ...dateCondition
     })
       .sort({ updatedAt: -1 })
       .lean()
-
     if (!data.length) return []
 
     // 2️⃣ map เป็น response
@@ -118,9 +113,9 @@ async function receiptSuccessTab (res, channel, body = {}) {
 
     return orders
   } catch (error) {
-    console.error('receiptSuccessTab error:', error)
-    return []
+    console.error(error)
+    return { status: 'dataNotFound' }
   }
 }
 
-module.exports = receiptSuccessTab
+module.exports = CancelledTab

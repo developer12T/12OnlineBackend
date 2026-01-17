@@ -1,20 +1,15 @@
 const { getAccessToken } = require('../services/oauth.service')
 const axios = require('axios')
-const orderDataMakro = require('../zort/dataZort/allOrderMakro')
 const orderModel = require('../model/order')
 const customerModel = require('../model/customer')
 const productModel = require('../model/product')
 const { getModelsByChannel } = require('../authen/middleware/channel')
-const generateUniqueId = require('../middleware/order')
-const InvReprint = require('../zort/subController/InvReprint')
 const receiptWaitTab = require('../zort/subController/ReceiptWaitTab')
 const receiptSuccessTab = require('../zort/subController/ReceiptSuccessTab')
-const ReceiptWaitTabPayment = require('../zort/subController/ReceiptWaitTabPayment')
-const AllOrderTab = require('../zort/subController/AllOrderTab')
-const invtWaitTab = require('../zort/subController/InvWaitTab')
-const invSuccessTab = require('../zort/subController/InvSuccessTab')
 const M3WaitTab = require('../zort/subController/M3WaitTab')
 const M3SuccessTab = require('../zort/subController/M3SuccessTab')
+const CancelledTab = require('../zort/subController/CancelledTab')
+const InvReprint = require('../zort/subController/InvReprint')
 const { Customer } = require('../model/master')
 const { OrderZort } = require('../zort/model/Order')
 const { Op } = require('sequelize')
@@ -28,6 +23,8 @@ const printer = require('pdf-to-printer')
 const { v4: uuidv4 } = require('uuid')
 const unzipper = require('unzipper')
 const { PDFDocument } = require('pdf-lib')
+const makroPdfStore = new Map()
+const PDF_TTL = 10 * 60 * 1000 // 10 นาที
 
 exports.updateInvoiceAndCo = async (req, res) => {
   try {
@@ -106,25 +103,31 @@ exports.exportOrderExcel = async (req, res) => {
     const channel = req.headers['x-channel']
     const { Order } = getModelsByChannel(channel, res, orderModel)
 
-    const { period } = req.query // ✅ รับ period
+    const { startDate, endDate } = req.query
+    const dateCondition = {}
 
-    let query = {}
+    if (startDate && endDate) {
+      // ✅ แปลงเป็นเวลาไทย
+      const start = new Date(`${startDate}T00:00:00+07:00`)
+      const end = new Date(`${endDate}T23:59:59.999+07:00`)
 
-    // ==========================
-    // 🔹 filter ตาม period
-    // ==========================
-    if (period) {
-      const startDate = moment(period, 'YYYYMM').startOf('month').toDate()
-      const endDate = moment(period, 'YYYYMM').endOf('month').toDate()
-
-      query.createdAt = { $gte: startDate, $lte: endDate }
+      dateCondition.updatedAt = {
+        $gte: start,
+        $lte: end
+      }
     }
 
     // ==========================
     // 🔹 query Order
     // ==========================
 
-    const orders = await Order.find(query).sort({ createdAt: -1 })
+    const orders = await Order.find({
+      ...dateCondition,
+      status: { $nin: ['Voided', 'Cancelled'] },
+      statusM3: { $eq: 'success' },
+      cono: { $ne: '' },
+      invno: { $ne: '' }
+    }).sort({ cono: 1 })
 
     // ==========================
     // 🔹 Excel
@@ -139,8 +142,8 @@ exports.exportOrderExcel = async (req, res) => {
       { header: 'Amount', key: 'amount', width: 12 },
       { header: 'VAT amount', key: 'vatAmount', width: 12 },
       { header: 'Ex Vat', key: 'examount', width: 12 },
-      { header: 'Discount Amount', key: 'discountamount', width: 12 },
-      { header: 'Order Date', key: 'createdAt', width: 15 },
+      // { header: 'Discount Amount', key: 'discountamount', width: 12 },
+      { header: 'Order Date', key: 'orderdate', width: 15 },
       { header: 'Order Print', key: 'updatedAt', width: 15 }
     ]
 
@@ -161,6 +164,7 @@ exports.exportOrderExcel = async (req, res) => {
         vatAmount: vatAmount,
         discountamount: order.discountamount || '-',
         createdAt: moment(order.createdAt).format('YYYY-MM-DD HH:mm'),
+        orderdate: moment(order.orderdate).format('YYYY-MM-DD HH:mm'),
         updatedAt: moment(order.createdAt).format('YYYY-MM-DD HH:mm')
       })
     })
@@ -176,7 +180,7 @@ exports.exportOrderExcel = async (req, res) => {
     )
     res.setHeader(
       'Content-Disposition',
-      `attachment; filename=orders_${period || 'all'}.xlsx`
+      `attachment; filename=orders_${startDate + '_' + endDate || 'all'}.xlsx`
     )
 
     await workbook.xlsx.write(res)
@@ -246,74 +250,45 @@ exports.updateStatusM3Success = async (req, res) => {
 exports.getOrder = async (req, res) => {
   try {
     const channel = req.headers['x-channel']
-    const { Order } = getModelsByChannel(channel, res, orderModel)
-    const { Customer } = getModelsByChannel(channel, res, customerModel)
 
-    // console.log("Customer",Customer)
-
-    var page = req.body.page
-    var tab = req.body.tab
+    const page = req.body.page
+    const tab = req.body.tab
 
     if (page == 'receipt') {
       if (tab == 'wait-tab') {
-        receiptWaitTab(res, channel).then(orders => {
+        receiptWaitTab(res, channel, req.body).then(orders => {
           res.json(orders)
         })
       } else if (tab == 'success-tab') {
         console.log('success-tab')
-        receiptSuccessTab(res, channel).then(orders => {
+        receiptSuccessTab(res, channel, req.body).then(orders => {
           res.json(orders)
         })
-      } else if (tab == 'payment-tab') {
-        ReceiptWaitTabPayment(res, channel).then(orders => {
-          res.json(orders)
-        })
-      }
-    } else if (page == 'all') {
-      AllOrderTab(res, channel).then(orders => {
-        res.json(orders)
-      })
-      // const data = await Order.findAll()
-      // res.json(data)
-    } else if (page == 'inv') {
-      if (tab == 'wait-tab') {
-        invtWaitTab(res, channel).then(orders => {
-          res.json(orders)
-        })
-      } else if (tab == 'success-tab') {
-        invSuccessTab(res, channel).then(orders => {
+      } else if (tab == 'cancelled-tab') {
+        console.log('success-tab')
+        CancelledTab(res, channel, req.body).then(orders => {
           res.json(orders)
         })
       }
     } else if (page == 'preparem3') {
       if (tab == 'wait-tab') {
-        M3WaitTab(res, channel).then(orders => {
+        M3WaitTab(res, channel, req.body).then(orders => {
           res.json(orders)
         })
       } else if (tab == 'success-tab') {
-        M3SuccessTab(res, channel).then(orders => {
+        M3SuccessTab(res, channel, req.body).then(orders => {
           res.json(orders)
         })
       }
     } else if (page == 'reprint') {
-      // รับพารามิเตอร์วันที่จาก request body
-      const { startDate, endDate } = req.body
-      const dateFilter = { startDate, endDate }
-      InvReprint(res, 'uat', dateFilter).then(orders => {
+      InvReprint(res, channel, {
+        startDate: req.body.startDate,
+        endDate: req.body.endDate
+      }).then(orders => {
         res.json(orders)
       })
-      // res.status(200).json({
-      //   status:200,
-      //   message:'getOrder successful'
-      // })
     }
-
-    // res.status(200).json({
-    //   status:200,
-    //   message:'getOrder successful'
-    // })
   } catch (error) {
-    // res.status(500).json('invalid data')
     console.log(error)
   }
 }
@@ -1155,15 +1130,47 @@ exports.streamMakroPdf = (req, res) => {
   const { token } = req.params
   const record = makroPdfStore.get(token)
 
-  if (!record || !fs.existsSync(record.path)) {
+  if (!record) {
+    return res.status(404).json({ message: 'PDF expired or not found' })
+  }
+
+  // เช็ค TTL
+  if (Date.now() - record.createdAt > PDF_TTL) {
+    try {
+      if (fs.existsSync(record.path)) {
+        fs.unlinkSync(record.path)
+      }
+    } catch (e) {}
+
+    makroPdfStore.delete(token)
+    return res.status(410).json({ message: 'PDF expired' })
+  }
+
+  if (!fs.existsSync(record.path)) {
+    makroPdfStore.delete(token)
     return res.status(404).json({ message: 'PDF not found' })
   }
 
   res.setHeader('Content-Type', 'application/pdf')
   res.setHeader('Content-Disposition', 'inline; filename="MAKRO_DELIVERY.pdf"')
 
-  const stream = fs.createReadStream(record.path)
-  stream.pipe(res)
+  fs.createReadStream(record.path).pipe(res)
+}
+
+const cleanupMakroPdfStore = () => {
+  const now = Date.now()
+
+  for (const [token, record] of makroPdfStore.entries()) {
+    if (now - record.createdAt > PDF_TTL) {
+      try {
+        if (fs.existsSync(record.path)) {
+          fs.unlinkSync(record.path)
+        }
+      } catch (e) {}
+
+      makroPdfStore.delete(token)
+    }
+  }
 }
 
 exports.printDeliveyMackro = async (req, res) => {
@@ -1175,7 +1182,7 @@ exports.printDeliveyMackro = async (req, res) => {
      * }
      */
     const { orderIds } = req.body
-    const makroPdfStore = new Map()
+
     const token = uuidv4()
 
     if (!Array.isArray(orderIds) || orderIds.length === 0) {
@@ -1268,6 +1275,8 @@ exports.printDeliveyMackro = async (req, res) => {
     // 6️⃣ Response to frontend
     // ===============================
 
+    cleanupMakroPdfStore()
+
     makroPdfStore.set(token, {
       path: mergedPath,
       createdAt: Date.now()
@@ -1291,8 +1300,6 @@ exports.printDeliveyMackro = async (req, res) => {
     res.status(500).json({ message: 'Internal server error' })
   }
 }
-
-//
 
 const getSecondPdfPathByOrder = (extractRoot, orderId) => {
   const orderDir = path.join(extractRoot, orderId)

@@ -420,29 +420,20 @@ const PromotionStore = sequelize.define(
   }
 )
 
-const OOHEAD = sequelize.define(
-  'OOHEAD',
+const ItemM3 = sequelize.define(
+  'MITMAS',
   {
-    OAORNO: {
+    MMCONO: {
       type: DataTypes.STRING,
-      field: 'OAORNO',
-      allowNull: false,
-      primaryKey: true
+      field: 'MMCONO'
     },
-    OACUOR: { type: DataTypes.STRING, field: 'OACUOR' },
-    OAORST: { type: DataTypes.STRING, field: 'OAORST' },
-    OAORSL: { type: DataTypes.STRING, field: 'OAORSL' },
-
-    OASMCD: { type: DataTypes.STRING, field: 'OASMCD' },
-    OAPYNO: { type: DataTypes.STRING, field: 'OAPYNO' },
-    OAWHLO: { type: DataTypes.STRING, field: 'OAWHLO' },
-    OACUNO: { type: DataTypes.STRING, field: 'OACUNO' },
-    OABRLA: { type: DataTypes.NUMBER, field: 'OABRLA' },
-    OAORSL: { type: DataTypes.STRING, field: 'OAORSL' },
-    OAORST: { type: DataTypes.STRING, field: 'OAORST' }
+    MMSTAT: { type: DataTypes.STRING, field: 'MMSTAT' },
+    MMITNO: { type: DataTypes.STRING, field: 'MMITNO' },
+    MMFUDS: { type: DataTypes.STRING, field: 'MMFUDS' },
+    MMITDS: { type: DataTypes.STRING, field: 'MMITDS' }
   },
   {
-    tableName: 'OOHEAD',
+    tableName: 'MITMAS',
     schema: 'MVXJDTA', // ✅ ระบุ schema
     freezeTableName: true, // ✅ กันเติม s
     timestamps: false
@@ -452,5 +443,5 @@ const OOHEAD = sequelize.define(
 module.exports = {
   Customer,
   PromotionStore,
-  OOHEAD
+  ItemM3
 }

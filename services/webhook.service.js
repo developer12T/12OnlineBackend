@@ -1,14 +1,9 @@
 const orderModel = require('../model/order')
 const productModel = require('../model/product')
 const { getModelsByChannel } = require('../authen/middleware/channel')
-const { Customer } = require('../model/master')
+const { Customer, ItemM3 } = require('../model/master')
 const axios = require('axios')
 const { Op } = require('sequelize')
-
-// const orderAmazeAll = require('../dataZort/allOrderAmaze')
-// const { Order, OrderDetail, OrderHis } = require('../model/Order')
-// const { Customer, ShippingAddress } = require('../model/Customer')
-// const { Product } = require('../model/Product')
 
 function getCustomerPrefix (channel) {
   switch (channel) {
@@ -159,29 +154,67 @@ exports.handleOrderPaid = async data => {
     data.customercode = customerNo
   }
 
+  // ดึง itemCode หลัก (suffix[0])
+  const itemCodes = [
+    ...new Set(
+      (Array.isArray(order?.listProduct) ? order.listProduct : data.list)
+        .map(i => i.itemCode?.split('_')[0])
+        .filter(Boolean)
+    )
+  ]
+
+  const itemsM3 = await ItemM3.findAll({
+    attributes: ['MMITNO', 'MMFUDS', 'MMITDS'],
+    where: {
+      MMCONO: 410,
+      // MMCONO: 410,
+      MMITNO: itemCodes
+    },
+    raw: true
+  })
+
+  const itemM3Map = {}
+  for (const m of itemsM3) {
+    itemM3Map[m.MMITNO] = {
+      nameFull: m.MMFUDS, // ชื่อย่อ
+      nameShort: m.MMITDS // ชื่อเต็ม
+    }
+  }
+
   // ================================
   // BASE listProduct (ใช้เหมือนกัน)
   // ================================
   const baseList = Array.isArray(order?.listProduct)
     ? [...order.listProduct]
     : Array.isArray(data.list)
-    ? data.list.map(item => ({
-        itemNumber: item.itemNumber,
-        id: Number(orderId),
-        productid: item.productid,
-        procode: item.proCode || '',
-        sku: item.sku,
-        itemCode: item.itemCode,
-        unit: item.unit,
-        name: item.name,
-        quantity: item.quantity,
-        discount: item.discount || 0,
-        discountChanel: item.discountChanel || '',
-        pricePerUnitOri: item.pricePerUnitOri ?? item.pricePerUnit,
-        pricePerUnit: item.pricePerUnit,
-        totalprice: item.totalprice
-      }))
+    ? data.list.map(item => {
+        const itemNo = item.itemCode?.split('_')[0]
+        const m3 = itemM3Map[itemNo] || {}
+
+        return {
+          itemNumber: item.itemNumber,
+          id: Number(orderId),
+          productid: item.productid,
+          procode: item.proCode || '',
+          sku: item.sku,
+          itemCode: item.itemCode,
+          unit: item.unit,
+          name: item.name,
+
+          // ⭐ จาก M3
+          nameM3: m3.nameShort || '', // MMFUDS
+          nameM3Full: m3.nameFull || '', // MMITDS
+
+          quantity: item.quantity,
+          discount: item.discount || 0,
+          discountChanel: item.discountChanel || '',
+          pricePerUnitOri: item.pricePerUnitOri ?? item.pricePerUnit,
+          pricePerUnit: item.pricePerUnit,
+          totalprice: item.totalprice
+        }
+      })
     : []
+
 
   let listProduct = [...baseList]
 

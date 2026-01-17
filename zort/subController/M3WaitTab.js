@@ -4,109 +4,92 @@ const orderModel = require('../../model/order')
 const customerModel = require('../../model/customer')
 const { getModelsByChannel } = require('../../authen/middleware/channel')
 const moment = require('moment')
-const currentDate = moment().utcOffset(7).format('YYYY-MM-DD')
-// function today() {
-const currentDateTime = moment().utcOffset(7).format('YYYY-MM-DDTHH:mm')
 
-async function M3WaitTab (res, channel) {
+function getThaiDayRange (day) {
+  return {
+    start: new Date(`${day}T00:00:00.000+07:00`),
+    end: new Date(`${day}T23:59:59.999+07:00`)
+  }
+}
+async function M3WaitTab (res, channel, body) {
   try {
     const { Order } = getModelsByChannel(channel, res, orderModel)
     const { Customer } = getModelsByChannel(channel, res, customerModel)
+    const { date } = body // '2026-01-17'
+
+    let dateCondition = {}
+    if (date) {
+      const { start, end } = getThaiDayRange(date)
+      dateCondition.updatedAt = { $gte: start, $lte: end }
+    }
 
     const data = await Order.find({
-      //   statusprint: '000',
-      //   statusPrininvSuccess: '000',
       status: { $ne: 'Voided' },
       status: { $ne: 'Cancelled' },
       statusM3: { $ne: 'success' },
       cono: { $ne: '' },
-      invno: { $ne: '' }
-      // $or: [{ paymentstatus: 'PAY_ON_ACCEPTANCE' }, { paymentstatus: 'Paid' }]
-    }).sort({ updatedAt: -1 })
-    // console.log("data",data)
-    const orders = []
+      invno: { $ne: '' },
+      ...dateCondition
+    })
+      .sort({ updatedAt: -1 })
+      .lean()
 
-    for (const row of data) {
-      const itemData = data.find(item => item.id === row.id)
+    if (!data.length) return []
 
-      // console.log("itemData", itemData)
+    // 2️⃣ map เป็น response
+    const orders = data.map(row => {
+      const items = (row.listProduct || []).map(item => ({
+        productid: item.productid,
+        sku: item.sku?.split('_')[0],
+        unit: item.sku?.split('_')[1],
+        name: item.name,
+        nameM3Full: item.nameM3Full,
+        nameM3: item.nameM3,
+        number: item.quantity,
+        pricepernumber: item.pricePerUnit,
+        totalprice: item.totalprice
+      }))
 
-      let cusdata
-      if (
-        (row.customeriderp === 'OLAZ000000' && row.saleschannel === 'Lazada') ||
-        (row.customeriderp === 'OAMZ000000' && row.saleschannel === 'Amaze')
-      ) {
-        cusdata = await Customer.findOne({ customerid: row.customerid }).select(
-          'customername customerid customeriderp customercode'
-        )
-      } else {
-        cusdata = await Customer.findOne({ customerid: row.customerid }).select(
-          'customername customerid customeriderp customercode'
-        )
-      }
-      const cuss = cusdata?.customername || ''
-
-      const items = itemData.listProduct.map(item => {
-        const skuParts = item.sku.split('_').filter(Boolean)
-        const skuSuffix = skuParts.at(-1) // Free / Premium / CRT / ฯลฯ
-
-        return {
-          productid: item.productid,
-          sku: skuParts[0], // รหัสสินค้า
-          unit:
-            skuSuffix === 'Free' || skuSuffix === 'Premium'
-              ? 'PCS'
-              : skuParts[1] || '',
-          name: item.name,
-          number: item.quantity,
-          discount: item.discount,
-          procode: item.procode,
-          pricepernumber: item.pricePerUnit,
-          pricepernumberOri: item.pricePerUnitOri,
-          totalprice: item.totalprice
-        }
-      })
-
-
-      const totalprint = row.totalprint ?? 0
-      const taxInStatus =
-        row.statusprintinv === 'TaxInvoice' ? 'ขอใบกำกับภาษี' : ''
+      // map status text
       const statusText =
-        {
-          Success: 'สำเร็จ',
-          Voided: 'ยกเลิก',
-          Waiting: 'รอส่ง',
-          Pending: 'รอโอน'
-        }[row.status] || 'พบข้อผิดพลาด'
+        row.status === 'Success'
+          ? 'สำเร็จ'
+          : row.status === 'Cancelled'
+          ? 'ยกเลิก'
+          : row.status === 'Shipped'
+          ? 'รอส่ง'
+          : row.status === 'Pending'
+          ? 'รอโอน'
+          : 'พบข้อผิดพลาด'
 
       const paymentstatusText =
-        {
-          Paid: 'ชำระแล้ว',
-          Voided: 'ยกเลิก',
-          Pending: 'รอชำระ'
-        }[row.paymentstatus] || 'พบข้อผิดพลาด'
+        row.paymentstatus === 'Paid'
+          ? 'ชำระแล้ว'
+          : row.paymentstatus === 'Cancelled'
+          ? 'ยกเลิก'
+          : row.paymentstatus === 'Pending'
+          ? 'รอชำระ'
+          : 'พบข้อผิดพลาด'
 
-      const isCOD = row.isCOD == '1' ? 'เก็บปลายทาง' : 'ไม่เก็บปลายทาง'
+      const taxInStatus = row.customeridnumber != '' ? 'ขอใบกำกับภาษี' : ''
 
-      const order = {
+      return {
         id: row.id,
         cono: row.cono,
         invno: row.invno,
+        invstatus: taxInStatus,
         orderdate: row.orderdate,
-        updatedAt: row.updatedAt,
         orderdateString: row.orderdateString,
-        // printdate: currentDate,
-        // printdatetime: currentDateTime,
+        printdate: row.updatedatetime,
+        printdatetime: row.updatedatetimeString,
         number: row.number,
         customerid: row.customerid,
-        customercode: row.customercode,
+        customer: row.customername || '', // ✅ ใช้จาก Order
         status: row.status,
-        statusText: statusText,
+        statusText,
         paymentstatus: row.paymentstatus,
-        paymentstatusText: paymentstatusText,
+        paymentstatusText,
         amount: row.amount,
-        discount: row.discount,
-        discountamount: row.discountamount,
         vatamount: row.vatamount,
         shippingchannel: row.shippingchannel,
         shippingamount: row.shippingamount,
@@ -118,15 +101,16 @@ async function M3WaitTab (res, channel) {
         createdatetime: row.createdatetime,
         statusprint: row.statusprint,
         statusprintinv: row.statusprintinv,
-        invstatus: taxInStatus,
-        totalprint: totalprint,
+        totalprint: row.totalprint || 0,
         saleschannel: row.saleschannel,
-        item: items,
-        customer: cuss,
-        isCOD: isCOD
+        isCOD: row.isCOD == '1' ? 'เก็บปลายทาง' : 'ไม่เก็บปลายทาง',
+        item: items
       }
-      orders.push(order)
-    }
+    })
+
+    // เรียง invno อีกรอบ (ถ้าจำเป็น)
+    orders.sort((a, b) => (b.invno || '').localeCompare(a.invno || ''))
+
     return orders
   } catch (error) {
     console.error(error)

@@ -9,6 +9,8 @@ async function InvReprint (res, channel, dateFilter = {}) {
     const { Order } = getModelsByChannel(channel, res, orderModel)
     let whereClause = {}
 
+    console.log(dateFilter)
+
     if (dateFilter.startDate && dateFilter.endDate) {
       whereClause.updatedAt = {
         $gte: new Date(dateFilter.startDate),
@@ -18,6 +20,8 @@ async function InvReprint (res, channel, dateFilter = {}) {
 
     const data = await Order.find(whereClause, {
       updatedAt: 1,
+      orderdate: 1,
+      status: 1,
       number: 1,
       id: 1,
       saleschannel: 1,
@@ -25,7 +29,7 @@ async function InvReprint (res, channel, dateFilter = {}) {
       cono: 1,
       listProduct: 1
     })
-      .sort({ updatedAt: 1, invno: 1 })
+      .sort({ orderdate: -1, invno: -1 })
       .lean()
 
     const orders = data.map(row => {
@@ -47,6 +51,8 @@ async function InvReprint (res, channel, dateFilter = {}) {
         updatedAt: row.updatedAt,
         number: row.number,
         id: row.id,
+        orderdate: row.orderdate,
+        status: row.status,
         saleschannel: row.saleschannel,
         invno: row.invno,
         cono: row.cono,

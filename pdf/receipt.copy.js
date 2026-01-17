@@ -45,7 +45,7 @@ module.exports = (res, orders = []) => {
   const list = Array.isArray(orders) && orders.length ? orders : [{}]
 
   let currentPageNumber = 1
-//   console.log('Generating receipt original PDF for', orders, 'orders')
+  //   console.log('Generating receipt original PDF for', orders, 'orders')
   for (let i = 0; i < list.length; i++) {
     if (i > 0) doc.addPage()
     const pdf = new ReceiptPDF(doc, {
@@ -288,6 +288,27 @@ class ReceiptPDF {
     })
   }
 
+  getUnitFromSku (sku = '') {
+    if (!sku) return 'หน่วย'
+
+    // แยก subsku เช่น 10013601003_PCS_4_ → PCS
+    const parts = String(sku).split('_').filter(Boolean)
+    const subsku = parts[1] // ตำแหน่งเดียวกับ PHP logic
+
+    const units = {
+      PCS: 'ชิ้น',
+      CTN: 'หีบ',
+      BOT: 'ขวด',
+      CRT: 'กล่อง',
+      BAG: 'ถุง',
+      PAC: 'แพ็ค',
+      Free: 'ชิ้น',
+      JOB: 'งาน'
+    }
+
+    return units[subsku] || 'หน่วย'
+  }
+
   // ===== Table Header (like PHP TableHeader) =====
   tableHeader (data) {
     function formatDateYYYYMMDD (value) {
@@ -480,9 +501,18 @@ class ReceiptPDF {
       cx += 10
 
       // unit
-      this.cellMm(cx, y, 10, rowH, 'ชิ้น', 'L', 'C', 12)
+      this.cellMm(
+        cx,
+        y,
+        10,
+        rowH,
+        this.getUnitFromSku(items[i]?.sku),
+        'L',
+        'C',
+        12
+      )
       cx += 10
-
+      
       // price
       this.cellMm(
         cx,
