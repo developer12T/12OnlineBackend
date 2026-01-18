@@ -155,11 +155,13 @@ exports.handleOrderPaid = async data => {
   }
 
   // ดึง itemCode หลัก (suffix[0])
+  // ดึง itemCode หลัก (suffix[0]) + trim + unique
   const itemCodes = [
     ...new Set(
       (Array.isArray(order?.listProduct) ? order.listProduct : data.list)
         .map(i => i.itemCode?.split('_')[0])
-        .filter(Boolean)
+        .map(v => String(v).trim())
+        .filter(v => v !== '')
     )
   ]
 
@@ -174,13 +176,17 @@ exports.handleOrderPaid = async data => {
   })
 
   const itemM3Map = {}
+  
   for (const m of itemsM3) {
-    itemM3Map[m.MMITNO] = {
+    const itno = String(m.MMITNO).trim()
+
+    itemM3Map[itno] = {
       nameFull: m.MMFUDS, // ชื่อย่อ
       nameShort: m.MMITDS // ชื่อเต็ม
     }
   }
 
+  console.log(itemM3Map)
   // ================================
   // BASE listProduct (ใช้เหมือนกัน)
   // ================================
@@ -214,7 +220,6 @@ exports.handleOrderPaid = async data => {
         }
       })
     : []
-
 
   let listProduct = [...baseList]
 
