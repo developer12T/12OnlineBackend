@@ -48,6 +48,7 @@ async function M3WaitTab (res, channel, body) {
         nameM3: item.nameM3,
         number: item.quantity,
         pricepernumber: item.pricePerUnit,
+        pricepernumberOri: item.pricePerUnitOri,
         totalprice: item.totalprice
       }))
 
