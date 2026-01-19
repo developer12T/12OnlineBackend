@@ -40,7 +40,7 @@ async function M3WaitTab (res, channel, body) {
     const orders = data.map(row => {
       const items = (row.listProduct || []).map(item => ({
         productid: item.productid,
-        itemCode: item.procode,
+        procode: item.procode,
         sku: item.sku?.split('_')[0],
         unit: item.sku?.split('_')[1],
         name: item.name,
