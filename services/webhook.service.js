@@ -148,6 +148,11 @@ exports.handleOrderPaid = async data => {
 
   let order = await Order.findOne({ id: orderId })
 
+  if (order && order.paymentstatus === 'Paid') {
+    console.log(`[Webhook] Order ${orderNumber} already paid → skip processing`)
+    return
+  }
+
   if (data.customeridnumber) {
     const customerNo = await insertCustomerToErp(data)
     console.log(`[ERP] Customer created ${customerNo} (${data.saleschannel})`)
@@ -176,7 +181,7 @@ exports.handleOrderPaid = async data => {
   })
 
   const itemM3Map = {}
-  
+
   for (const m of itemsM3) {
     const itno = String(m.MMITNO).trim()
 

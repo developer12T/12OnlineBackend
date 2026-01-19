@@ -440,8 +440,25 @@ const ItemM3 = sequelize.define(
   }
 )
 
+const OOHEAD = sequelize.define(
+  'OOHEAD',
+  {
+    OAORNO: {
+      type: DataTypes.STRING,
+      field: 'OAORNO'
+    }
+  },
+  {
+    tableName: 'OOHEAD',
+    schema: 'MVXJDTA', // ✅ ระบุ schema
+    freezeTableName: true, // ✅ กันเติม s
+    timestamps: false
+  }
+)
+
 module.exports = {
   Customer,
   PromotionStore,
-  ItemM3
+  ItemM3,
+  OOHEAD
 }

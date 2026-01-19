@@ -5,6 +5,7 @@ const {
   removeOrder,
   getDashboardData,
   updateStatusM3Success,
+  updateStatusM3Success2,
   addOrderMakroPro,
   exportOrderExcel,
   updateInvoiceAndCo,
@@ -19,6 +20,7 @@ router.post('/printDeliveyMackro', printDeliveyMackro)
 router.delete('/delete', removeOrder)
 router.post('/getDashboardData', getDashboardData)
 router.post('/m3/update-status-success', updateStatusM3Success)
+router.get('/m3/update-status-success2', updateStatusM3Success2)
 router.get('/addOrderMakroPro', addOrderMakroPro)
 router.get('/export/excel', exportOrderExcel)
 router.get('/updateInvoiceAndCo', updateInvoiceAndCo)

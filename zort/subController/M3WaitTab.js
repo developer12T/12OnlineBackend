@@ -14,7 +14,6 @@ function getThaiDayRange (day) {
 async function M3WaitTab (res, channel, body) {
   try {
     const { Order } = getModelsByChannel(channel, res, orderModel)
-    const { Customer } = getModelsByChannel(channel, res, customerModel)
     const { date } = body // '2026-01-17'
 
     let dateCondition = {}

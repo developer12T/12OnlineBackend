@@ -10,7 +10,7 @@ const M3WaitTab = require('../zort/subController/M3WaitTab')
 const M3SuccessTab = require('../zort/subController/M3SuccessTab')
 const CancelledTab = require('../zort/subController/CancelledTab')
 const InvReprint = require('../zort/subController/InvReprint')
-const { Customer } = require('../model/master')
+const { Customer, OOHEAD } = require('../model/master')
 const { OrderZort } = require('../zort/model/Order')
 const { Op } = require('sequelize')
 const ExcelJS = require('exceljs')
@@ -247,6 +247,84 @@ exports.updateStatusM3Success = async (req, res) => {
   }
 }
 
+exports.updateStatusM3Success2 = async (req, res) => {
+  try {
+    const channel = req.headers['x-channel'] || 'uat'
+    const { Order } = getModelsByChannel(channel, res, orderModel)
+
+    // 1. ดึง order ใน Mongo ที่ยังไม่ success
+    const pendingOrders = await Order.find(
+      { statusM3: { $ne: 'success' } },
+      { cono: 1 }
+    ).lean()
+
+    if (!pendingOrders.length) {
+      return res.json({
+        message: 'no pending orders',
+        updated: 0
+      })
+    }
+
+    const orderNos = pendingOrders
+      .map(o => String(o.cono).trim())
+      .filter(Boolean)
+
+    if (!orderNos.length) {
+      return res.json({
+        message: 'no valid cono found',
+        updated: 0
+      })
+    }
+
+    // 2. เช็คว่ามีใน OOHEAD หรือไม่
+    const ooheadList = await OOHEAD.findAll({
+      attributes: ['OAORNO'],
+      where: {
+        OAORNO: orderNos
+      },
+      raw: true
+    })
+
+    if (!ooheadList.length) {
+      return res.json({
+        message: 'no orders found in OOHEAD',
+        updated: 0
+      })
+    }
+
+    const successOrderNos = ooheadList.map(o => String(o.OAORNO).trim())
+
+    // 3. update Mongo
+    const result = await Order.updateMany(
+      {
+        cono: { $in: successOrderNos },
+        statusM3: { $ne: 'success' }
+      },
+      {
+        $set: {
+          statusM3: 'success'
+        },
+        $currentDate: {
+          updatedAt: true
+        }
+      }
+    )
+
+    return res.json({
+      message: 'update statusM3 success',
+      pendingInMongo: pendingOrders.length,
+      foundInOOHEAD: successOrderNos.length,
+      matched: result.matchedCount ?? result.n,
+      modified: result.modifiedCount ?? result.nModified,
+      updatedOrders: successOrderNos
+    })
+  } catch (error) {
+    console.error('updateStatusM3Success2 error:', error)
+    return res.status(500).json({
+      message: 'internal server error'
+    })
+  }
+}
 exports.getOrder = async (req, res) => {
   try {
     const channel = req.headers['x-channel']
