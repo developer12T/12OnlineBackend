@@ -43,6 +43,7 @@ async function M3WaitTab (res, channel, body) {
         sku: item.sku?.split('_')[0],
         unit: item.sku?.split('_')[1],
         name: item.name,
+        discount: item.discount,
         nameM3Full: item.nameM3Full,
         nameM3: item.nameM3,
         number: item.quantity,
@@ -84,6 +85,7 @@ async function M3WaitTab (res, channel, body) {
         printdatetime: row.updatedatetimeString,
         number: row.number,
         customerid: row.customerid,
+        customercode: row.customercode,
         customer: row.customername || '', // ✅ ใช้จาก Order
         status: row.status,
         statusText,
