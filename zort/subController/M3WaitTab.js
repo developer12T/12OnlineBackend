@@ -78,6 +78,7 @@ async function M3WaitTab (res, channel, body) {
 
       return {
         id: row.id,
+        printdatetimeString: row.printdatetimeString,
         cono: row.cono,
         invno: row.invno,
         invstatus: taxInStatus,
