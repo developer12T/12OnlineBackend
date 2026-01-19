@@ -462,114 +462,135 @@ class ReceiptPDF {
 
   // ===== Invoice (like PHP Invoice) =====
   invoice (data) {
-    // Page header/footer happen per page in FPDF automatically; we call explicitly.
     this.header()
-
-    // Body
     this.tableHeader(data)
     this.tableColumn()
-
-    // Table rows
-    // In PHP: writes rows with borders 'L' and last col 'LR', and on overflow: sign+new page.
-    // Here: we render 12 rows with placeholders (since no mapping yet).
-    // const maxLines = data.listProduct.length || 0
-    // let y = 62 // row start right under column header (55 + 7)
-    // const rowH = 7
 
     const TABLE_START_Y = 62
     const TABLE_END_Y = 150
     const rowH = 7
     let y = TABLE_START_Y
 
-    const items = data?.listProduct || [] // ตอนนี้ยัง placeholder ได้
+    const items = data?.listProduct || []
 
     for (let i = 0; i < items.length; i++) {
-      // Overflow logic placeholder (match PHP threshold ~150mm)
-      if (y > 150) {
-        // Draw top line across columns like PHP does with 0-height cells w/ 'T'
-        // We'll just draw a single top border line across table width.
-        this.drawBordersMm(10, y, 133, 0.1, 'T')
+      const item = items[i]
+      const isDiscountRow = item?.sku === 'DISONLINE'
 
-        // Sign area then new page
+      // ===== ชื่อสินค้า (รองรับ 2 บรรทัด) =====
+      const NAME_MAX_LINES = 2
+      const NAME_LINE_H = rowH
+      const NAME_MAX_H = NAME_MAX_LINES * NAME_LINE_H
+
+      const usedNameH = this.multiCellMm(
+        10 + 10, // x ของคอลัมน์ชื่อ
+        y,
+        56,
+        NAME_LINE_H,
+        item?.name || '',
+        '',
+        'L',
+        12
+      )
+
+      const rowHeight = Math.max(rowH, Math.min(usedNameH, NAME_MAX_H))
+
+      // ===== overflow หน้าใหม่ =====
+      if (y + rowHeight > TABLE_END_Y) {
+        this.drawBordersMm(10, y, 133, 0.1, 'T')
         this.signBill()
         this.doc.addPage()
-        this.currentPageNumber += 1
+        this.currentPageNumber++
         this.header()
         this.tableHeader(data)
         this.tableColumn()
-        y = 62
+        y = TABLE_START_Y
       }
 
       let cx = 10
 
-      // index
-      this.cellMm(cx, y, 10, rowH, String(i + 1), 'L', 'C', 12)
+      // ===== ลำดับ =====
+      this.cellMm(cx, y, 10, rowHeight, String(i + 1), 'L', 'C', 12)
       cx += 10
 
-      // name
-      this.cellMm(cx, y, 56, rowH, items[i].name, 'L', 'L', 12)
+      // ===== รายการสินค้า =====
+      this.drawBordersMm(cx, y, 56, rowHeight, 'L')
+      this.doc.text(item?.name || '', this.mm(cx + 1.5), this.mm(y + 1.2), {
+        width: this.mm(56 - 3),
+        height: this.mm(rowHeight - 2)
+      })
       cx += 56
 
-      // qty
-      this.cellMm(cx, y, 10, rowH, items[i].quantity, 'L', 'C', 12)
-      cx += 10
-
-      // unit
+      // ===== จำนวน =====
       this.cellMm(
         cx,
         y,
         10,
-        rowH,
-        this.getUnitFromSku(items[i]?.sku),
+        rowHeight,
+        isDiscountRow ? '' : item?.quantity || '',
         'L',
         'C',
         12
       )
       cx += 10
 
-      // price
+      // ===== หน่วย =====
+      this.cellMm(
+        cx,
+        y,
+        10,
+        rowHeight,
+        isDiscountRow ? 'หน่วย' : this.getUnitFromSku(item?.sku),
+        'L',
+        'C',
+        12
+      )
+      cx += 10
+
+      // ===== ราคา =====
       this.cellMm(
         cx,
         y,
         15,
-        rowH,
-        this.fmtMoney(items[i]?.pricePerUnit),
+        rowHeight,
+        this.fmtMoney(item?.pricePerUnit),
         'L',
-        'C',
+        'R',
         12
       )
       cx += 15
 
-      // discount
+      // ===== ส่วนลด =====
       this.cellMm(
         cx,
         y,
         12,
-        rowH,
-        this.fmtMoney(items[i]?.discount),
+        rowHeight,
+        this.fmtMoney(item?.discount),
         'L',
-        'C',
+        'R',
         12
       )
       cx += 12
 
-      // amount (last has LR)
+      // ===== จำนวนเงิน =====
       this.cellMm(
         cx,
         y,
         20,
-        rowH,
-        this.fmtMoney(items[i]?.totalprice),
+        rowHeight,
+        this.fmtMoney(item?.totalprice),
         'LR',
         'R',
         12
       )
-      y += rowH
+
+      y += rowHeight
     }
 
+    // ===== เติมแถวว่างจนถึงเส้น summary =====
     while (y + rowH <= TABLE_END_Y) {
       let cx = 10
-
       this.cellMm(cx, y, 10, rowH, '', 'L')
       cx += 10
       this.cellMm(cx, y, 56, rowH, '', 'L')
@@ -583,93 +604,59 @@ class ReceiptPDF {
       this.cellMm(cx, y, 12, rowH, '', 'L')
       cx += 12
       this.cellMm(cx, y, 20, rowH, '', 'LR')
-
       y += rowH
     }
 
-    // Summary block (like PHP)
-    // PHP after filling blank lines:
-    // left: Cell(88,28, '(' . thai_number_to_words(totalamount) . ')', 'TL', 0, 'C')
-    // right: 4 lines of 25+20 cells with borders.
-    const sumY = y // directly after rows (same as PHP)
-    // วาดกรอบเหมือนเดิม
+    // ===== เส้นปิดตาราง =====
+    this.drawBordersMm(10, y, 133, 0.1, 'T')
+
+    // ===== SUMMARY =====
+    const sumY = y
     const SUM_X = 10
     const SUM_W = 88
     const SUM_H = 28
-    const SUM_FONT = 14
-    // const SUM_TEXT = `(${this.thaiNumberToWords(300)})`
-    const SUM_TEXT = `(${this.thaiNumberToWords(data.amount)})`
 
-    // วาดกรอบบน + ซ้าย
-    this.drawBordersMm(SUM_X, sumY, SUM_W, SUM_H, 'TL')
-
-    // วัดความสูงข้อความจริง (pt → mm)
-    this.doc.font('THSarabunNew_Bold').fontSize(SUM_FONT)
-
-    const textHeightPt = this.doc.heightOfString(SUM_TEXT, {
-      width: this.mm(SUM_W),
-      align: 'center'
-    })
-
-    const textHeightMm = textHeightPt / this.MM_TO_PT
-
-    // ⭐ center ที่แท้จริง
-    const centerTextY = sumY + (SUM_H - textHeightMm) / 2
-
-    // วาด text
-    this.doc.text(SUM_TEXT, this.mm(SUM_X), this.mm(centerTextY), {
-      width: this.mm(SUM_W),
-      align: 'center'
-    })
-
-    // ปิดกรอบล่าง + ซ้าย
-    this.drawBordersMm(SUM_X, sumY + 21, SUM_W, 7, 'LB')
-
-    // this.cellMm(
-    //   10,
-    //   sumY,
-    //   88,
-    //   28,
-    //   `(${this.thaiNumberToWords(300)})`,
-    //   'TL',
-    //   'C',
-    //   14
-    // )
-
-    const amount = data?.amount || 0
+    const amount = Number(data?.amount || 0)
     const baseAmount = amount / 1.07
     const vatAmount = amount - baseAmount
-    const examont = amount - vatAmount
+    const SUM_TEXT = `(${this.thaiNumberToWords(amount)})`
 
-    // Right summary
+    this.drawBordersMm(SUM_X, sumY, SUM_W, SUM_H, 'TL')
+    this.doc.font('THSarabunNew_Bold').fontSize(14)
+
+    const textHeightMm =
+      this.doc.heightOfString(SUM_TEXT, {
+        width: this.mm(SUM_W),
+        align: 'center'
+      }) / this.MM_TO_PT
+
+    this.doc.text(
+      SUM_TEXT,
+      this.mm(SUM_X),
+      this.mm(sumY + (SUM_H - textHeightMm) / 2),
+      { width: this.mm(SUM_W), align: 'center' }
+    )
+
+    this.drawBordersMm(SUM_X, sumY + 21, SUM_W, 7, 'LB')
+
+    // ===== SUMMARY ขวา =====
     this.cellMm(98, sumY, 25, 7, 'ส่วนลดการค้า', 'TL', 'L', 12)
     this.cellMm(123, sumY, 20, 7, this.fmtMoney(data?.discount), 'TLR', 'R', 12)
 
-    this.cellMm(10, sumY + 7, 88, 7, '', 'L', 'L', 12)
+    this.cellMm(10, sumY + 7, 88, 7, '', 'L')
     this.cellMm(98, sumY + 7, 25, 7, 'รวมราคาสินค้า', 'L', 'L', 12)
-    this.cellMm(123, sumY + 7, 20, 7, this.fmtMoney(examont), 'LR', 'R', 12)
+    this.cellMm(123, sumY + 7, 20, 7, this.fmtMoney(baseAmount), 'LR', 'R', 12)
 
-    this.cellMm(10, sumY + 14, 88, 7, '', 'L', 'L', 12)
+    this.cellMm(10, sumY + 14, 88, 7, '', 'L')
     this.cellMm(98, sumY + 14, 25, 7, 'ภาษีมูลค่าเพิ่ม 7%', 'L', 'L', 12)
     this.cellMm(123, sumY + 14, 20, 7, this.fmtMoney(vatAmount), 'LR', 'R', 12)
 
-    this.cellMm(10, sumY + 21, 88, 7, '', 'LB', 'L', 12)
+    this.cellMm(10, sumY + 21, 88, 7, '', 'LB')
     this.cellMm(98, sumY + 21, 25, 7, 'จำนวนเงินรวมสุทธิ', 'LB', 'L', 12)
-    this.cellMm(
-      123,
-      sumY + 21,
-      20,
-      7,
-      this.fmtMoney(data?.amount),
-      'LRB',
-      'R',
-      12
-    )
+    this.cellMm(123, sumY + 21, 20, 7, this.fmtMoney(amount), 'LRB', 'R', 12)
 
-    // Spacer then sign
-    this.signBill(sumY + 28 + 3)
-
-    // Footer
+    // ===== SIGN + FOOTER =====
+    this.signBill(sumY + 31)
     this.footer()
   }
 
