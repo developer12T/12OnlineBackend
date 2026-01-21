@@ -10,11 +10,13 @@ const M3WaitTab = require('../zort/subController/M3WaitTab')
 const M3SuccessTab = require('../zort/subController/M3SuccessTab')
 const CancelledTab = require('../zort/subController/CancelledTab')
 const InvReprint = require('../zort/subController/InvReprint')
-const { Customer, OOHEAD } = require('../model/master')
+const { Customer, OOHEAD, ItemM3 } = require('../model/master')
 const { OrderZort } = require('../zort/model/Order')
 const { Op } = require('sequelize')
 const ExcelJS = require('exceljs')
 const moment = require('moment')
+
+const mapProductWithM3 = require('../utils/mapProductWithM3')
 
 const fs = require('fs')
 const path = require('path')
@@ -325,6 +327,107 @@ exports.updateStatusM3Success2 = async (req, res) => {
     })
   }
 }
+
+exports.updateItemNameM3 = async (req, res) => {
+  try {
+    const channel = req.headers['x-channel'] || 'uat'
+    const { Order } = getModelsByChannel(channel, res, orderModel)
+
+    // 1. ดึง order ที่ยังไม่ success
+    const orders = await Order.find(
+      { statusM3: { $ne: 'success' }, saleschannel: 'Makro' },
+      { listProduct: 1 }
+    ).lean()
+
+    if (!orders.length) {
+      return res.json({
+        message: 'no pending orders',
+        updated: 0
+      })
+    }
+
+    // 2. รวม itemCode ทั้งหมด (unique)
+    const itemCodes = [
+      ...new Set(
+        orders
+          .flatMap(o => (Array.isArray(o.listProduct) ? o.listProduct : []))
+          .map(i => i.itemCode?.split('_')[0])
+          .map(v => String(v).trim())
+          .filter(Boolean)
+      )
+    ]
+
+    if (!itemCodes.length) {
+      return res.json({
+        message: 'no item codes found',
+        updated: 0
+      })
+    }
+
+    // 3. ดึงชื่อสินค้าจาก M3
+    const itemsM3 = await ItemM3.findAll({
+      attributes: ['MMITNO', 'MMFUDS', 'MMITDS'],
+      where: {
+        MMCONO: 410,
+        MMITNO: itemCodes
+      },
+      raw: true
+    })
+
+    // 4. ทำ map สำหรับ lookup เร็ว ๆ
+    const itemM3Map = {}
+    for (const m of itemsM3) {
+      const itno = String(m.MMITNO).trim()
+      itemM3Map[itno] = {
+        nameShort: m.MMFUDS || '', // ⭐ MMFUDS
+        nameFull: m.MMITDS || '' // ⭐ MMITDS
+      }
+    }
+
+    // 5. update MongoDB
+    let updatedCount = 0
+
+    for (const order of orders) {
+      let changed = false
+
+      const newListProduct = order.listProduct.map(p => {
+        const code = p.itemCode?.split('_')[0]
+        const m3 = itemM3Map[code]
+
+        if (!m3) return p
+
+        // ถ้ายังไม่มีชื่อ → update
+        if (!p.nameM3 || !p.nameM3Full) {
+          changed = true
+          return {
+            ...p,
+            nameM3: m3.nameShort || '',
+            nameM3Full: m3.nameFull || ''
+          }
+        }
+
+        return p
+      })
+
+      if (changed) {
+        await Order.updateOne(
+          { _id: order._id },
+          { $set: { listProduct: newListProduct } }
+        )
+        updatedCount++
+      }
+    }
+
+    return res.json({
+      message: 'update item name from M3 success',
+      updated: updatedCount
+    })
+  } catch (error) {
+    console.error('updateItemNameM3 error:', error)
+    res.status(500).json({ error: error.message })
+  }
+}
+
 exports.getOrder = async (req, res) => {
   try {
     const channel = req.headers['x-channel']
@@ -851,27 +954,32 @@ exports.addOrderMakroPro = async (req, res) => {
       // ================================
       // 5. listProduct (แทน OrderDetail)
       // ================================
-      const listProduct = []
+      // const listProduct = []
 
-      for (const line of order.order_lines) {
-        const [code, suffix] = line.product_shop_sku.split('_')
-        listProduct.push({
-          itemNumber: line.line_number || 1,
-          // id: order.order_id,
-          productid: line.offer_id,
-          procode: line.procode || '',
-          sku: line.product_shop_sku,
-          itemCode: code || '',
-          unit: suffix || '',
-          name: line.product_title,
-          quantity: line.quantity,
-          discount: 0,
-          discountChanel: '',
-          pricePerUnitOri: line.price_unit,
-          pricePerUnit: line.price_unit,
-          totalprice: line.total_price
-        })
-      }
+      // ================================
+      // 5. listProduct (map + M3)
+      // ================================
+      const listProduct = await mapProductWithM3(order.order_lines, ItemM3)
+
+      // for (const line of order.order_lines) {
+      //   const [code, suffix] = line.product_shop_sku.split('_')
+      //   listProduct.push({
+      //     itemNumber: line.line_number || 1,
+      //     // id: order.order_id,
+      //     productid: line.offer_id,
+      //     procode: line.procode || '',
+      //     sku: line.product_shop_sku,
+      //     itemCode: code || '',
+      //     unit: suffix || '',
+      //     name: line.product_title,
+      //     quantity: line.quantity,
+      //     discount: 0,
+      //     discountChanel: '',
+      //     pricePerUnitOri: line.price_unit,
+      //     pricePerUnit: line.price_unit,
+      //     totalprice: line.total_price
+      //   })
+      // }
 
       // ================================
       // 6. Create Order (Mongo)
