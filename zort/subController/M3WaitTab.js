@@ -23,8 +23,7 @@ async function M3WaitTab (res, channel, body) {
     }
 
     const data = await Order.find({
-      status: { $ne: 'Voided' },
-      status: { $ne: 'Cancelled' },
+      status: { $nin: ['Voided', 'Cancelled'] },
       statusM3: { $ne: 'success' },
       cono: { $ne: '' },
       invno: { $ne: '' },
