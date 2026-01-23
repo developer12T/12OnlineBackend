@@ -520,7 +520,7 @@ class ReceiptPDF {
         y,
         10,
         rowHeight,
-        isDiscountRow ? '' : item?.quantity || '',
+        isDiscountRow ? '1' : item?.quantity || '',
         'L',
         'C',
         12
@@ -540,13 +540,16 @@ class ReceiptPDF {
       )
       cx += 10
 
+      const itemPrice = item?.quantity * item?.pricePerUnitOri || 0
+      const summary = itemPrice - (item?.discount || 0)
+
       // ===== ราคา =====
       this.cellMm(
         cx,
         y,
         15,
         rowHeight,
-        this.fmtMoney(item?.pricePerUnit),
+        this.fmtMoney(itemPrice),
         'L',
         'R',
         12
@@ -572,7 +575,7 @@ class ReceiptPDF {
         y,
         20,
         rowHeight,
-        this.fmtMoney(item?.totalprice),
+        this.fmtMoney(summary),
         'LR',
         'R',
         12
@@ -652,7 +655,7 @@ class ReceiptPDF {
     this.signBill(sumY + 31)
     this.footer()
   }
-  
+
   // ===== Signature area (like PHP SignBill + Row helper) =====
   signBill (yOverride) {
     // In PHP, SignBill uses Row() with widths [33,33,33,33] and height from NbLines.

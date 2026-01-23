@@ -513,7 +513,7 @@ class ReceiptPDF {
         y,
         10,
         rowHeight,
-        isDiscountRow ? '' : item?.quantity || '',
+        isDiscountRow ? '1' : item?.quantity || '',
         'L',
         'C',
         12
@@ -533,17 +533,11 @@ class ReceiptPDF {
       )
       cx += 10
 
+      const itemPrice = item?.quantity * item?.pricePerUnitOri || 0
+      const summary = itemPrice - (item?.discount || 0)
+
       // ===== ราคา =====
-      this.cellMm(
-        cx,
-        y,
-        15,
-        rowHeight,
-        this.fmtMoney(item?.pricePerUnit),
-        'L',
-        'R',
-        12
-      )
+      this.cellMm(cx, y, 15, rowHeight, this.fmtMoney(itemPrice), 'L', 'R', 12)
       cx += 15
 
       // ===== ส่วนลด =====
@@ -560,16 +554,7 @@ class ReceiptPDF {
       cx += 12
 
       // ===== จำนวนเงิน =====
-      this.cellMm(
-        cx,
-        y,
-        20,
-        rowHeight,
-        this.fmtMoney(item?.totalprice),
-        'LR',
-        'R',
-        12
-      )
+      this.cellMm(cx, y, 20, rowHeight, this.fmtMoney(summary), 'LR', 'R', 12)
 
       y += rowHeight
     }
