@@ -457,7 +457,10 @@ class ReceiptPDF {
     const rowH = 7
     let y = TABLE_START_Y
 
-    const items = data?.listProduct || []
+    // const items = data?.listProduct || []
+    const items = (data?.listProduct || []).filter(
+      item => item?.sku !== 'DISONLINE'
+    )
 
     for (let i = 0; i < items.length; i++) {
       const item = items[i]

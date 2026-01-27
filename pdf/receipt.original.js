@@ -471,7 +471,10 @@ class ReceiptPDF {
     const rowH = 7
     let y = TABLE_START_Y
 
-    const items = data?.listProduct || []
+    // const items = data?.listProduct || []
+    const items = (data?.listProduct || []).filter(
+      item => item?.sku !== 'DISONLINE'
+    )
 
     for (let i = 0; i < items.length; i++) {
       const item = items[i]
@@ -551,16 +554,7 @@ class ReceiptPDF {
       const summary = itemPrice - (item?.discount || 0)
 
       // ===== ราคา =====
-      this.cellMm(
-        cx,
-        y,
-        15,
-        rowHeight,
-        this.fmtMoney(itemPrice),
-        'L',
-        'R',
-        12
-      )
+      this.cellMm(cx, y, 15, rowHeight, this.fmtMoney(itemPrice), 'L', 'R', 12)
       cx += 15
 
       // ===== ส่วนลด =====
@@ -577,16 +571,7 @@ class ReceiptPDF {
       cx += 12
 
       // ===== จำนวนเงิน =====
-      this.cellMm(
-        cx,
-        y,
-        20,
-        rowHeight,
-        this.fmtMoney(summary),
-        'LR',
-        'R',
-        12
-      )
+      this.cellMm(cx, y, 20, rowHeight, this.fmtMoney(summary), 'LR', 'R', 12)
 
       y += rowHeight
     }
