@@ -171,7 +171,7 @@ exports.getOrdersForPrint = async checklist => {
 
     if (!invno && currentCono !== null) {
       cono = currentCono
-      invno = await getNextRunning('171') // ถ้าอันนี้ยังเป็น Mongo counter ถือว่าปลอดภัย
+      invno = await getNextRunningFromOOHEAD('171') // ถ้าอันนี้ยังเป็น Mongo counter ถือว่าปลอดภัย
       currentCono++
     }
 
