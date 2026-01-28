@@ -1,7 +1,14 @@
 const orderModel = require('../model/order')
 const { getModelsByChannel } = require('../authen/middleware/channel')
-const { getNextRunning } = require('../services/runningNumber.service')
+const {
+  getNextRunning,
+  getNextRunningFromOOHEAD
+} = require('../services/runningNumber.service')
 const axios = require('axios')
+
+function getThaiYear () {
+  return (new Date().getFullYear() + 543).toString()
+}
 
 exports.prepareOrdersForPrint = async checklist => {
   const channel = 'uat'
@@ -20,7 +27,7 @@ exports.prepareOrdersForPrint = async checklist => {
     )
 
     const cono = response.data.lastNo
-    const invno = await getNextRunning('171')
+    const invno = await getNextRunningFromOOHEAD('171')
 
     await Order.updateOne(
       { id: order.id, invno: { $in: [null, '', undefined] } },

@@ -333,42 +333,39 @@ exports.handleOrderPaid = async data => {
 
   let recalculatedAmount = null // default = ไม่คิดใหม่
 
-  if (data.saleschannel === 'Lazada' && Number(data.discount) > 0) {
+  // if (data.saleschannel === 'Lazada' && Number(data.discount) > 0) {
+  //   const CODE = 'DISONLINE'
+  //   const discount = Number(data.discount)
+  //   const sellerdiscount = Number(data.sellerdiscount)
+
+  //   const discountValue = Number(discount + sellerdiscount)
+
+  //   // ➕ 2) เพิ่ม DISONLINE (เป็นบวกได้ เพราะระบบไปหักเอง)
+  //   if (!listProduct.some(p => p.itemCode === CODE)) {
+  //     listProduct.push({
+  //       itemNumber: listProduct.length + 1,
+  //       id: Number(orderId),
+  //       productid: CODE,
+  //       procode: '',
+  //       sku: CODE,
+  //       itemCode: CODE,
+  //       unit: 'PCS',
+  //       name: 'DISONLINE',
+  //       quantity: 1,
+  //       discount: 0,
+  //       discountChanel: '',
+  //       pricePerUnitOri: discountValue,
+  //       pricePerUnit: discountValue,
+  //       totalprice: discountValue
+  //     })
+  //   }
+  // }
+
+  if (data.saleschannel === 'Shopee' && Number(data.sellerdiscount) > 0) {
     const CODE = 'DISONLINE'
     const discount = Number(data.discount)
     const sellerdiscount = Number(data.sellerdiscount)
-
-    const discountValue = Number(discount + sellerdiscount)
-
-    // ➕ 2) เพิ่ม DISONLINE (เป็นบวกได้ เพราะระบบไปหักเอง)
-    if (!listProduct.some(p => p.itemCode === CODE)) {
-      listProduct.push({
-        itemNumber: listProduct.length + 1,
-        id: Number(orderId),
-        productid: CODE,
-        procode: '',
-        sku: CODE,
-        itemCode: CODE,
-        unit: 'PCS',
-        name: 'DISONLINE',
-        quantity: 1,
-        discount: 0,
-        discountChanel: '',
-        pricePerUnitOri: discountValue,
-        pricePerUnit: discountValue,
-        totalprice: discountValue
-      })
-    }
-  }
-
-  if (
-    data.saleschannel === 'Shopee' &&
-    (Number(data.sellerdiscount) > 0 || Number(data.discount))
-  ) {
-    const CODE = 'DISONLINE'
-    const discount = Number(data.discount)
-    const sellerdiscount = Number(data.sellerdiscount)
-    const discountValue = Number(discount + sellerdiscount)
+    const discountValue = Number(sellerdiscount)
 
     // 🔁 1) คิด totalprice ใหม่จาก pricePerUnitOri * quantity
     listProduct = recalcListProductTotal(listProduct)

@@ -1,6 +1,8 @@
 const counterModel = require('../model/counter')
 const { getModelsByChannel } = require('../authen/middleware/channel')
 const channel = 'uat'
+const { OOHEAD } = require('../model/master')
+const { Op } = require('sequelize')
 
 function getThaiYear (date = new Date()) {
   return date.getFullYear() + 543
@@ -19,6 +21,7 @@ function generateRunningNumber ({ year, code, running }) {
  * @param {string} code - รหัสกลาง เช่น "171"
  * @returns {Promise<string>} running number เช่น "2564171000001"
  */
+
 async function getNextRunning (code) {
   if (!code) {
     throw new Error('code is required')
@@ -34,8 +37,8 @@ async function getNextRunning (code) {
       $setOnInsert: { year, code }
     },
     {
-      new: true, // เอาค่าหลัง increment
-      upsert: true // ถ้าไม่เจอให้สร้างใหม่
+      new: true,
+      upsert: true
     }
   ).lean()
 
@@ -46,8 +49,35 @@ async function getNextRunning (code) {
   })
 }
 
+async function getNextRunningFromOOHEAD (fix) {
+  if (!fix) throw new Error('fix is required')
+
+  const year = getThaiYear() // 🔥 ปีปัจจุบัน
+  const prefix = `${year}${fix}`
+
+  const lastRow = await OOHEAD.findOne({
+    where: {
+      OAORTP: '071'
+    },
+    order: [['OACUOR', 'DESC']],
+    attributes: ['OACUOR'],
+    raw: true
+  })
+
+  let nextRunning = 1
+
+  if (lastRow?.OACUOR) {
+    const lastRunning = lastRow.OACUOR.slice(prefix.length) // 6 ตัวท้าย
+    nextRunning = parseInt(lastRunning, 10) + 1
+  }
+
+  const runningStr = String(nextRunning).padStart(6, '0')
+  return `${prefix}${runningStr}`
+}
+
 module.exports = {
   getNextRunning,
+  getNextRunningFromOOHEAD,
   getThaiYear,
   generateRunningNumber
 }

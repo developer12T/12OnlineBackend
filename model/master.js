@@ -449,6 +449,18 @@ const OOHEAD = sequelize.define(
     }
   },
   {
+    OACUOR: {
+      type: DataTypes.STRING,
+      field: 'OACUOR'
+    }
+  },
+  {
+    OAORTP: {
+      type: DataTypes.STRING,
+      field: 'OAORTP'
+    }
+  },
+  {
     tableName: 'OOHEAD',
     schema: 'MVXJDTA', // ✅ ระบุ schema
     freezeTableName: true, // ✅ กันเติม s
