@@ -1508,6 +1508,34 @@ const getSecondPdfPathByOrder = (extractRoot, orderId) => {
 }
 
 exports.updateInvFromExcel = async (req, res) => {
+  function excelSerialToISO (serial) {
+    if (!serial) return null
+
+    const excelEpoch = new Date(Date.UTC(1899, 11, 30))
+    const date = new Date(excelEpoch.getTime() + serial * 86400000)
+
+    return date.toISOString()
+  }
+
+  function excelSerialWithNowTime (serial) {
+    const base = new Date(Date.UTC(1899, 11, 30))
+    const date = new Date(base.getTime() + serial * 86400000)
+
+    const now = new Date()
+
+    return new Date(
+      Date.UTC(
+        date.getUTCFullYear(),
+        date.getUTCMonth(),
+        date.getUTCDate(),
+        now.getUTCHours(),
+        now.getUTCMinutes(),
+        now.getUTCSeconds(),
+        now.getUTCMilliseconds()
+      )
+    ).toISOString()
+  }
+
   try {
     const channel = req.headers['x-channel']
     const { Order } = getModelsByChannel(channel, res, orderModel)
@@ -1531,17 +1559,33 @@ exports.updateInvFromExcel = async (req, res) => {
      */
 
     // 2️⃣ build bulk ops
+    // const ops = rows
+    //   .filter(r => r.Invo && r.SUM !== undefined)
+    //   .map(r => ({
+    //     updateOne: {
+    //       filter: {
+    //         invno: String(r.Invo) // 🔥 map Invo -> invno
+    //       },
+    //       update: {
+    //         $set: {
+    //           amount: Number(r.SUM)
+    //           // updatedAt: new Date()
+    //         }
+    //       }
+    //     }
+    //   }))
+
     const ops = rows
-      .filter(r => r.Invo && r.SUM !== undefined)
+      .filter(r => r.Invo && r.date)
       .map(r => ({
         updateOne: {
           filter: {
-            invno: String(r.Invo) // 🔥 map Invo -> invno
+            invno: String(r.Invo)
           },
           update: {
             $set: {
-              amount: Number(r.SUM),
-              // updatedAt: new Date()
+              printdatetimeString: excelSerialWithNowTime(r.date)
+              // หรือใช้ parseExcelDateWithNowTime(r.date)
             }
           }
         }
@@ -1560,6 +1604,14 @@ exports.updateInvFromExcel = async (req, res) => {
       matched: result.matchedCount,
       modified: result.modifiedCount
     })
+
+
+    // res.json({
+    //   message: 'Excel processed successfully',
+    //   totalRows: rows
+    //   // matched: result.matchedCount,
+    //   // modified: result.modifiedCount
+    // })
   } catch (error) {
     console.error('[updateInvFromExcel]', error)
     res.status(500).json({ message: 'Internal server error' })

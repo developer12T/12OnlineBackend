@@ -12,7 +12,7 @@ async function InvReprint (res, channel, dateFilter = {}) {
     console.log(dateFilter)
 
     if (dateFilter.startDate && dateFilter.endDate) {
-      whereClause.updatedAt = {
+      whereClause.printdatetimeString = {
         $gte: new Date(dateFilter.startDate),
         $lte: new Date(dateFilter.endDate)
       }
@@ -27,6 +27,7 @@ async function InvReprint (res, channel, dateFilter = {}) {
       saleschannel: 1,
       invno: 1,
       cono: 1,
+      printdatetimeString: 1,
       listProduct: 1
     })
       .sort({ orderdate: -1, invno: -1 })
@@ -48,7 +49,7 @@ async function InvReprint (res, channel, dateFilter = {}) {
       })
 
       return {
-        updatedAt: row.updatedAt,
+        printdatetimeString: row.printdatetimeString,
         number: row.number,
         id: row.id,
         orderdate: row.orderdate,

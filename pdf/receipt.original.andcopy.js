@@ -303,7 +303,7 @@ class ReceiptPDF {
       if (isNaN(d.getTime())) return ''
       return d.toISOString().slice(0, 10)
     }
-    const docDate = formatDateYYYYMMDD(data.updatedAt)
+    const docDate = formatDateYYYYMMDD(data.printdatetimeString)
     const HEADER_LAST_Y = 21
     const HEADER_TABLE_GAP = 4
     const TABLE_START_Y = HEADER_LAST_Y + HEADER_TABLE_GAP
