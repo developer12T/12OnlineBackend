@@ -13,8 +13,8 @@ async function InvReprint (res, channel, dateFilter = {}) {
 
     if (dateFilter.startDate && dateFilter.endDate) {
       whereClause.printdatetimeString = {
-        $gte: new Date(dateFilter.startDate),
-        $lte: new Date(dateFilter.endDate)
+        $gte: new Date(dateFilter.startDate).toISOString(),
+        $lte: new Date(dateFilter.endDate).toISOString()
       }
     }
 
