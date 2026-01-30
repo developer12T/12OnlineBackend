@@ -11,8 +11,11 @@ const {
   updateInvoiceAndCo,
   printDeliveyMackro,
   streamMakroPdf,
-  updateItemNameM3
+  updateItemNameM3,
+  updateInvFromExcel
 } = require('../../controllers/order.controller')
+
+const upload = require('../../middleware/uploadExcel')
 
 const router = express.Router()
 
@@ -26,6 +29,12 @@ router.get('/addOrderMakroPro', addOrderMakroPro)
 router.get('/export/excel', exportOrderExcel)
 router.get('/updateInvoiceAndCo', updateInvoiceAndCo)
 router.get('/updateItemNameM3', updateItemNameM3)
+
+router.post(
+  '/upload-invoice-excel',
+  upload.single('data'), // 👈 field name = data
+  updateInvFromExcel
+)
 
 // ✅ ต้องมีบรรทัดนี้
 router.get('/makro/pdf/:token', streamMakroPdf)

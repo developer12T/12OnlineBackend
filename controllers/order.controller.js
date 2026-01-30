@@ -28,6 +28,8 @@ const { PDFDocument } = require('pdf-lib')
 const makroPdfStore = new Map()
 const PDF_TTL = 10 * 60 * 1000 // 10 นาที
 
+const xlsx = require('xlsx')
+
 exports.updateInvoiceAndCo = async (req, res) => {
   try {
     const channel = req.headers['x-channel']
@@ -1503,4 +1505,63 @@ const getSecondPdfPathByOrder = (extractRoot, orderId) => {
     .sort((a, b) => b.size - a.size)
 
   return candidates[0]?.fullPath || null
+}
+
+exports.updateInvFromExcel = async (req, res) => {
+  try {
+    const channel = req.headers['x-channel']
+    const { Order } = getModelsByChannel(channel, res, orderModel)
+
+    if (!req.file) {
+      return res.status(400).json({ message: 'Excel file is required' })
+    }
+
+    // 1️⃣ read excel from buffer
+    const workbook = xlsx.read(req.file.buffer, { type: 'buffer' })
+    const sheet = workbook.Sheets[workbook.SheetNames[0]]
+    const rows = xlsx.utils.sheet_to_json(sheet)
+
+    if (!rows.length) {
+      return res.status(400).json({ message: 'Excel is empty' })
+    }
+
+    /**
+     * rows example:
+     * { Invo: 2569171001934, SUM: 14 }
+     */
+
+    // 2️⃣ build bulk ops
+    const ops = rows
+      .filter(r => r.Invo && r.SUM !== undefined)
+      .map(r => ({
+        updateOne: {
+          filter: {
+            invno: String(r.Invo) // 🔥 map Invo -> invno
+          },
+          update: {
+            $set: {
+              amount: Number(r.SUM),
+              // updatedAt: new Date()
+            }
+          }
+        }
+      }))
+
+    if (!ops.length) {
+      return res.status(400).json({ message: 'No valid rows to update' })
+    }
+
+    // 3️⃣ execute bulk update
+    const result = await Order.bulkWrite(ops, { ordered: false })
+
+    res.json({
+      message: 'Excel processed successfully',
+      totalRows: rows.length,
+      matched: result.matchedCount,
+      modified: result.modifiedCount
+    })
+  } catch (error) {
+    console.error('[updateInvFromExcel]', error)
+    res.status(500).json({ message: 'Internal server error' })
+  }
 }
