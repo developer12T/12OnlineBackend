@@ -305,7 +305,7 @@ exports.handleOrderPaid = async data => {
   // ================================
   // SHIPPING
   // ================================
-  if (Number(data.shippingamount) > 0) {
+  if (Number(data.shippingamount) > 0 && data.saleschannel !== 'Lazada') {
     const CODE = 'ZNS1401001_JOB'
     if (!listProduct.some(p => p.itemCode === CODE)) {
       listProduct.push({
