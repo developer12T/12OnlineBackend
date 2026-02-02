@@ -27,7 +27,7 @@ async function M3WaitTab (res, channel, body) {
       statusM3: { $ne: 'success' },
       cono: { $ne: '' },
       invno: { $ne: '' },
-      ...dateCondition
+      // ...dateCondition
     })
       .sort({ updatedAt: -1 })
       .lean()
