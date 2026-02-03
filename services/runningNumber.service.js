@@ -1,4 +1,5 @@
 const counterModel = require('../model/counter')
+const orderModel = require('../model/order')
 const { getModelsByChannel } = require('../authen/middleware/channel')
 const channel = 'uat'
 const { OOHEAD } = require('../model/master')
@@ -50,26 +51,53 @@ async function getNextRunning (code) {
 }
 
 async function getNextRunningFromOOHEAD (fix) {
-  if (!fix) throw new Error('fix is required')
+  const channel = 'uat'
+  const { Order } = getModelsByChannel(channel, null, orderModel)
 
-  const year = getThaiYear() // 🔥 ปีปัจจุบัน
+  const year = getThaiYear()
   const prefix = `${year}${fix}`
 
-  const lastRow = await OOHEAD.findOne({
+  // -----------------------------
+  // 1. MSSQL (OOHEAD)
+  // -----------------------------
+  const lastOOHEAD = await OOHEAD.findOne({
     where: {
-      OAORTP: '071'
+      OAORTP: '071',
+      OACUOR: {
+        [Op.like]: `${prefix}%`
+      }
     },
     order: [['OACUOR', 'DESC']],
     attributes: ['OACUOR'],
     raw: true
   })
 
-  let nextRunning = 1
-
-  if (lastRow?.OACUOR) {
-    const lastRunning = lastRow.OACUOR.slice(prefix.length) // 6 ตัวท้าย
-    nextRunning = parseInt(lastRunning, 10) + 1
+  let lastRunningSql = 0
+  if (lastOOHEAD?.OACUOR) {
+    lastRunningSql = parseInt(lastOOHEAD.OACUOR.slice(prefix.length), 10)
   }
+
+  // -----------------------------
+  // 2. MongoDB (orders.invno)
+  // -----------------------------
+  const lastMongo = await Order.findOne(
+    {
+      invno: { $regex: `^${prefix}` }
+    },
+    { invno: 1 }
+  )
+    .sort({ invno: -1 })
+    .lean()
+
+  let lastRunningMongo = 0
+  if (lastMongo?.invno) {
+    lastRunningMongo = parseInt(lastMongo.invno.slice(prefix.length), 10)
+  }
+
+  // -----------------------------
+  // 3. Pick MAX + 1
+  // -----------------------------
+  const nextRunning = Math.max(lastRunningSql, lastRunningMongo) + 1
 
   const runningStr = String(nextRunning).padStart(6, '0')
   return `${prefix}${runningStr}`
