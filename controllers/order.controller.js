@@ -30,6 +30,10 @@ const PDF_TTL = 10 * 60 * 1000 // 10 นาที
 
 const xlsx = require('xlsx')
 
+const {
+  getNextRunningFromOOHEAD
+} = require('../services/runningNumber.service')
+
 exports.updateInvoiceAndCo = async (req, res) => {
   try {
     const channel = req.headers['x-channel']
@@ -1605,7 +1609,6 @@ exports.updateInvFromExcel = async (req, res) => {
       modified: result.modifiedCount
     })
 
-
     // res.json({
     //   message: 'Excel processed successfully',
     //   totalRows: rows
@@ -1614,6 +1617,135 @@ exports.updateInvFromExcel = async (req, res) => {
     // })
   } catch (error) {
     console.error('[updateInvFromExcel]', error)
+    res.status(500).json({ message: 'Internal server error' })
+  }
+}
+
+function getThaiYear () {
+  return (new Date().getFullYear() + 543).toString()
+}
+
+exports.updateInvoNumber = async (req, res) => {
+  try {
+    const fix = '171'
+    const startCono = '1267104415'
+
+    const channel = 'uat'
+    const { Order } = getModelsByChannel(channel, null, orderModel)
+
+    const year = getThaiYear()
+    const prefix = `${year}${fix}`
+
+    /* ===============================
+     * 1) หา invno ที่ซ้ำ
+     * =============================== */
+    const dupInvnos = await Order.aggregate([
+      {
+        $match: {
+          invno: { $regex: `^${prefix}` }
+        }
+      },
+      {
+        $group: {
+          _id: '$invno',
+          count: { $sum: 1 },
+          ids: { $push: '$id' }
+        }
+      },
+      {
+        $match: { count: { $gt: 1 } }
+      }
+    ])
+
+    if (!dupInvnos.length) {
+      console.log('✅ No duplicate invno found')
+      return
+    }
+
+    const dupIds = dupInvnos.flatMap(d => d.ids)
+
+    /* ===============================
+     * 2) ดึงเฉพาะ order ที่ต้องแก้
+     * =============================== */
+    const orders = await Order.find(
+      {
+        id: { $in: dupIds },
+        cono: { $gte: startCono } // ⭐ เงื่อนไขสำคัญ
+      },
+      { id: 1, invno: 1, cono: 1 }
+    )
+      .lean()
+      .sort({ cono: 1 }) // ⭐ เรียงตาม cono
+
+    if (!orders.length) {
+      console.log('ℹ️ No orders to fix after cono', startCono)
+      return
+    }
+
+    /* ===============================
+     * 3) หา invno เริ่มต้น
+     * =============================== */
+
+    /* ===============================
+     * 3) กำหนด invno เริ่มต้น (manual)
+     * =============================== */
+    const startInvno = '2569171003956'
+
+    // safety check กันพลาด
+    if (!startInvno.startsWith(prefix)) {
+      throw new Error(
+        `startInvno ${startInvno} does not match prefix ${prefix}`
+      )
+    }
+
+    let running = parseInt(startInvno.slice(prefix.length), 10)
+    // const firstInvno = await getNextRunningFromOOHEAD(fix)
+
+    // let running = parseInt(firstInvno.slice(prefix.length), 10)
+
+    /* ===============================
+     * 4) เตรียม bulk update
+     * =============================== */
+    const bulkOps = []
+
+    for (const order of orders) {
+      const newInvno = `${prefix}${String(running).padStart(6, '0')}`
+      running++
+
+      bulkOps.push({
+        updateOne: {
+          filter: { id: order.id },
+          update: {
+            $set: {
+              invno: newInvno
+            }
+            // $currentDate: { updatedAt: true }
+          }
+        }
+      })
+
+      // debug log (แนะนำให้เปิดตอนรันครั้งแรก)
+      console.log(
+        `FIX invno | cono=${order.cono} | ${order.invno} → ${newInvno}`
+      )
+    }
+
+    /* ===============================
+     * 5) bulk write
+     * =============================== */
+    if (bulkOps.length) {
+      await Order.bulkWrite(bulkOps)
+    }
+
+    console.log(`✅ Fixed ${bulkOps.length} orders (start cono ${startCono})`)
+
+    res.json({
+      message: 'updateInvoNumber successfully',
+      totalRows: bulkOps.length,
+      startCono: startCono
+    })
+  } catch (error) {
+    console.error('[updateInvoNumber]', error)
     res.status(500).json({ message: 'Internal server error' })
   }
 }

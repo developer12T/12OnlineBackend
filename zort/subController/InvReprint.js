@@ -18,6 +18,8 @@ async function InvReprint (res, channel, dateFilter = {}) {
       }
     }
 
+    // whereClause.cono = '1267104417'
+
     const data = await Order.find(whereClause, {
       updatedAt: 1,
       orderdate: 1,
@@ -34,19 +36,18 @@ async function InvReprint (res, channel, dateFilter = {}) {
       .lean()
 
     const orders = data.map(row => {
-      const items = (row.listProduct || []).map(item => {
-        const [sku = '', unit = ''] = item.sku?.split('_') || []
 
-        return {
-          productid: item.productid,
-          sku,
-          unit,
-          name: item.name,
-          number: item.number,
-          pricepernumber: item.pricepernumber,
-          totalprice: item.totalprice
-        }
-      })
+      const items = (row.listProduct || []).map(item => ({
+        productid: item.productid,
+        sku: item.sku?.split('_')[0],
+        unit: item.sku?.split('_')[1],
+        name: item.name,
+        nameM3Full: item.nameM3Full,
+        nameM3: item.nameM3,
+        number: item.quantity,
+        pricepernumber: item.pricePerUnit,
+        totalprice: item.totalprice
+      }))
 
       return {
         printdatetimeString: row.printdatetimeString,

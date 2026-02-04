@@ -474,24 +474,20 @@ class ReceiptPDF {
       const isDiscountRow = item?.sku === 'DISONLINE'
 
       // ===== ชื่อสินค้า (รองรับ 2 บรรทัด) =====
-      const NAME_MAX_LINES = 2
-      const NAME_LINE_H = rowH
-      const NAME_MAX_H = NAME_MAX_LINES * NAME_LINE_H
 
-      const usedNameH = this.multiCellMm(
-        10 + 10, // x ของคอลัมน์ชื่อ
-        y,
-        56,
-        NAME_LINE_H,
-        item?.name || '',
-        '',
-        'L',
-        12
-      )
+      const nameText = item?.name || ''
 
-      const rowHeight = Math.max(rowH, Math.min(usedNameH, NAME_MAX_H))
+      // ===== 1. วัดความสูงอย่างเดียว (NO RENDER) =====
+      const nameTextHeightMm =
+        this.doc.heightOfString(nameText, {
+          width: this.mm(56 - 3),
+          align: 'left'
+        }) / this.MM_TO_PT
 
-      // ===== overflow หน้าใหม่ =====
+      const usedNameH = Math.ceil(nameTextHeightMm / rowH) * rowH
+      const rowHeight = Math.min(Math.max(rowH, usedNameH), rowH * 2)
+
+      // ===== 2. เช็ค page break ก่อน render =====
       if (y + rowHeight > TABLE_END_Y) {
         this.drawBordersMm(10, y, 133, 0.1, 'T')
         this.signBill()
@@ -503,40 +499,33 @@ class ReceiptPDF {
         y = TABLE_START_Y
       }
 
+      // ===== 3. RENDER จริง (ครั้งเดียวเท่านั้น) =====
       let cx = 10
 
-      // ===== ลำดับ =====
+      // ลำดับ
       this.cellMm(cx, y, 10, rowHeight, String(i + 1), 'L', 'C', 12)
       cx += 10
 
-      // ===== รายการสินค้า =====
+      // ชื่อสินค้า (จำกัดความสูงจริง)
       this.drawBordersMm(cx, y, 56, rowHeight, 'L')
-      this.doc.text(item?.name || '', this.mm(cx + 1.5), this.mm(y + 1.2), {
+      this.doc.text(nameText, this.mm(cx + 1.5), this.mm(y + 1.2), {
         width: this.mm(56 - 3),
-        height: this.mm(rowHeight - 2)
+        height: this.mm(rowHeight - 2), // ⭐ คุมไม่ให้หลุด
+        lineBreak: true
       })
       cx += 56
 
-      // ===== จำนวน =====
-      this.cellMm(
-        cx,
-        y,
-        10,
-        rowHeight,
-        isDiscountRow ? '1' : item?.quantity || '',
-        'L',
-        'C',
-        12
-      )
+      // จำนวน
+      this.cellMm(cx, y, 10, rowHeight, item?.quantity || '', 'L', 'C', 12)
       cx += 10
 
-      // ===== หน่วย =====
+      // หน่วย
       this.cellMm(
         cx,
         y,
         10,
         rowHeight,
-        isDiscountRow ? 'หน่วย' : this.getUnitFromSku(item?.sku),
+        this.getUnitFromSku(item?.sku),
         'L',
         'C',
         12
@@ -546,11 +535,11 @@ class ReceiptPDF {
       const itemPrice = item?.quantity * item?.pricePerUnitOri || 0
       const summary = itemPrice - (item?.discount || 0)
 
-      // ===== ราคา =====
+      // ราคา
       this.cellMm(cx, y, 15, rowHeight, this.fmtMoney(itemPrice), 'L', 'R', 12)
       cx += 15
 
-      // ===== ส่วนลด =====
+      // ส่วนลด
       this.cellMm(
         cx,
         y,
@@ -563,7 +552,7 @@ class ReceiptPDF {
       )
       cx += 12
 
-      // ===== จำนวนเงิน =====
+      // จำนวนเงิน
       this.cellMm(cx, y, 20, rowHeight, this.fmtMoney(summary), 'LR', 'R', 12)
 
       y += rowHeight
@@ -585,6 +574,7 @@ class ReceiptPDF {
       this.cellMm(cx, y, 12, rowH, '', 'L')
       cx += 12
       this.cellMm(cx, y, 20, rowH, '', 'LR')
+
       y += rowH
     }
 
