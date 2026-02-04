@@ -33,6 +33,7 @@ const xlsx = require('xlsx')
 const {
   getNextRunningFromOOHEAD
 } = require('../services/runningNumber.service')
+const { env } = require('process')
 
 exports.updateInvoiceAndCo = async (req, res) => {
   try {
@@ -581,19 +582,19 @@ exports.getDashboardData = async (req, res) => {
 
     const StockZortout = await Product.countDocuments({ stock: 0 })
     let StockM3 = await axios.post(
-      'http://192.168.2.97:8383/M3API/StockManage/Stock/getStockCount'
+      `${process.env.M3API_URL}/online/api/M3API/StockManage/Stock/getStockCount`
     )
     let countStockM3 = StockM3.data[0].stockerp
 
     let inv = await axios.post(
-      'http://192.168.2.97:8383/M3API/OrderManage/Order/getInvNumber',
+      `${process.env.M3API_URL}/online/api/M3API/OrderManage/Order/getInvNumber`,
       { ordertype: '071' },
       {}
     )
     let invM3 = inv.data[0].customerordno
 
     let cono = await axios.post(
-      'http://192.168.2.97:8383/M3API/OrderManage/Order/getNumberSeries',
+      `${process.env.M3API_URL}/online/api/M3API/OrderManage/Order/getNumberSeries`,
       {
         series: 'ง',
         seriestype: '01',
@@ -605,7 +606,7 @@ exports.getDashboardData = async (req, res) => {
     let conoM3 = cono.data[0].lastno
 
     let OSPE = await axios.post(
-      'http://192.168.2.97:8383/M3API/OrderManage/order/getCustomerInv',
+      `${process.env.M3API_URL}/online/api/M3API/OrderManage/order/getCustomerInv`,
       {
         customertype: '107',
         customercode: 'OSPE'
@@ -615,7 +616,7 @@ exports.getDashboardData = async (req, res) => {
     let OSPENO = OSPE.data[0].customercode
 
     let OLAZ = await axios.post(
-      'http://192.168.2.97:8383/M3API/OrderManage/order/getCustomerInv',
+      `${process.env.M3API_URL}/online/api/M3API/OrderManage/order/getCustomerInv`,
       {
         customertype: '107',
         customercode: 'OLAZ'
@@ -1747,5 +1748,134 @@ exports.updateInvoNumber = async (req, res) => {
   } catch (error) {
     console.error('[updateInvoNumber]', error)
     res.status(500).json({ message: 'Internal server error' })
+  }
+}
+
+exports.exportOrderStockExcel = async (req, res) => {
+  try {
+    const channel = 'uat'
+    const { Order } = getModelsByChannel(channel, res, orderModel)
+    let { orderIds } = req.body
+
+    /* ==========================
+     * Validate
+     * ========================== */
+    if (!Array.isArray(orderIds) || !orderIds.length) {
+      return res.status(400).json({ message: 'orderIds is required' })
+    }
+
+    // กันยิงมั่ว + duplicate
+    orderIds = [...new Set(orderIds)].slice(0, 500)
+
+    /* ==========================
+     * Query orders
+     * ========================== */
+    const orders = await Order.find({
+      id: { $in: orderIds }
+    })
+      .select({ listProduct: 1 })
+      .lean()
+
+    // res.json({
+    //   message: 'exportOrderStockExcel successfully',
+    //   order: orders
+    //   // startCono: startCono
+    // })
+
+    /* ==========================
+     * Process summary
+     * ========================== */
+    const unitMapping = {
+      CTN: 'large',
+      BAG: 'medium',
+      PAC: 'medium',
+      CRT: 'medium',
+      PCS: 'small',
+      BOT: 'small'
+    }
+
+    const grouped = {}
+
+    for (const order of orders) {
+      for (const p of order.listProduct || []) {
+        const itemCode = p.sku?.split('_')[0]
+        const unitItem = p.sku?.split('_')[1]
+
+        if (!itemCode) continue
+        if (itemCode.startsWith('ZNS') || itemCode.startsWith('DIS')) continue
+
+        if (!grouped[itemCode]) {
+          grouped[itemCode] = {
+            id: itemCode,
+            name: p.nameM3Full,
+            large: 0,
+            medium: 0,
+            small: 0
+          }
+        }
+
+        const unit = unitMapping[unitItem] || 'small'
+        grouped[itemCode][unit] += Number(p.quantity || 0)
+      }
+    }
+
+    const summary = Object.values(grouped).sort((a, b) =>
+      a.id.localeCompare(b.id)
+    )
+
+    /* ==========================
+     * Response headers
+     * ========================== */
+    res.setHeader(
+      'Content-Type',
+      'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+    )
+    res.setHeader(
+      'Content-Disposition',
+      'attachment; filename="summary_order.xlsx"'
+    )
+
+    /* ==========================
+     * Excel (STREAM)
+     * ========================== */
+    const workbook = new ExcelJS.stream.xlsx.WorkbookWriter({
+      stream: res
+    })
+
+    const sheet = workbook.addWorksheet('Summary')
+
+    sheet.columns = [
+      { header: 'รหัสสินค้า', key: 'id', width: 20 },
+      { header: 'รายการ', key: 'name', width: 40 },
+      { header: 'หีบ', key: 'large', width: 10 },
+      { header: 'แพ็ค', key: 'medium', width: 10 },
+      { header: 'ชิ้น', key: 'small', width: 10 }
+    ]
+
+    let total = { large: 0, medium: 0, small: 0 }
+
+    for (const r of summary) {
+      sheet.addRow(r).commit()
+      total.large += r.large
+      total.medium += r.medium
+      total.small += r.small
+    }
+
+    sheet
+      .addRow({
+        id: 'รวมทั้งหมด',
+        large: total.large,
+        medium: total.medium,
+        small: total.small
+      })
+      .commit()
+
+    sheet.commit()
+    await workbook.commit()
+
+    // stream จะ end ให้อัตโนมัติ
+  } catch (err) {
+    console.error('[exportOrderStockExcel]', err)
+    res.status(500).json({ message: 'Export failed' })
   }
 }

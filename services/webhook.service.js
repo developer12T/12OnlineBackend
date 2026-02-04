@@ -200,6 +200,7 @@ exports.handleOrderPaid = async data => {
     : Array.isArray(data.list)
     ? data.list.map(item => {
         const itemNo = item.itemCode?.split('_')[0]
+        const unit = item.itemCode?.split('_')[1]
         const m3 = itemM3Map[itemNo] || {}
 
         return {
@@ -209,7 +210,7 @@ exports.handleOrderPaid = async data => {
           procode: item.proCode || '',
           sku: item.sku,
           itemCode: item.itemCode,
-          unit: item.unit,
+          unit: unit,
           name: item.name,
 
           // ⭐ จาก M3
@@ -397,11 +398,13 @@ exports.handleOrderPaid = async data => {
   // ================================
   // CREATE OR UPDATE
   // ================================
+  const finalAmount = calculateOrderAmount(listProduct)
+
   if (!order) {
     await Order.create({
       id: orderId,
       ...data,
-      amount: recalculatedAmount ?? data.amount,
+      amount: finalAmount,
       paymentstatus: 'Paid',
       statusprint: '000',
       statusprintinv: '',
@@ -420,9 +423,8 @@ exports.handleOrderPaid = async data => {
   order.vatamount = data.vatamount
   order.currency = data.currency
   order.listProduct = listProduct
-  order.amount = recalculatedAmount ?? data.amount
-  order.totalproductamount =
-    recalculatedAmount ?? data.totalproductamount ?? data.amount
+  order.amount = finalAmount
+  order.totalproductamount = finalAmount
   // order.statusprint = '000'
 
   await order.save()
@@ -433,24 +435,15 @@ exports.handleOrderPaid = async data => {
   )
 }
 
-function sumOrderAmount (listProduct = []) {
-  return listProduct
-    .filter(item => item.sku !== 'DISONLINE')
-    .reduce((sum, item) => sum + Number(item.totalprice || 0), 0)
+function calculateOrderAmount (listProduct = []) {
+  return listProduct.reduce((sum, item) => {
+    if (!item) return sum
+    if (item.itemCode === 'DISONLINE') return sum
+
+    const value = Number(item.totalprice ?? 0)
+    return sum + (Number.isFinite(value) ? value : 0)
+  }, 0)
 }
-
-// function recalcListProductTotal (listProduct = []) {
-//   return listProduct.map(item => {
-//     const qty = Number(item.quantity || 0)
-//     const priceOri = Number(item.pricePerUnitOri || 0)
-
-//     return {
-//       ...item,
-//       pricePerUnit: item.pricePerUnitOri,
-//       totalprice: qty * priceOri
-//     }
-//   })
-// }
 
 function recalcListProductTotal (listProduct = []) {
   return listProduct.map(item => {

@@ -5,6 +5,7 @@ const customerModel = require('../../model/customer')
 const { getModelsByChannel } = require('../../authen/middleware/channel')
 const moment = require('moment')
 
+
 function getThaiDayRange (day) {
   return {
     start: new Date(`${day}T00:00:00.000+07:00`),

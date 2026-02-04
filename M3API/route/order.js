@@ -9,8 +9,8 @@ const addOrderM3 = require('../controller/addOrderM3')
 const getOrderErp = require('../controller/getOrderErp')
 const addCustomerInv = require('../controller/addCustomerInv')
 
-OrderManage.use('/order', Order);
-OrderManage.use('/order', updateNumberRunning);
+// OrderManage.use('/order', Order);
+// OrderManage.use('/order', updateNumberRunning);
 OrderManage.use('/order', addOrderErp);
 OrderManage.use('/order', addOrderErpRepair);
 OrderManage.use('/order', addOrderM3);

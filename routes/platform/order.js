@@ -13,7 +13,8 @@ const {
   streamMakroPdf,
   updateItemNameM3,
   updateInvFromExcel,
-  updateInvoNumber
+  updateInvoNumber,
+  exportOrderStockExcel
 } = require('../../controllers/order.controller')
 
 const upload = require('../../middleware/uploadExcel')
@@ -31,6 +32,7 @@ router.get('/export/excel', exportOrderExcel)
 router.get('/updateInvoiceAndCo', updateInvoiceAndCo)
 router.get('/updateItemNameM3', updateItemNameM3)
 router.get('/updateInvoNumber', updateInvoNumber)
+router.post('/export-summary', exportOrderStockExcel)
 
 router.post(
   '/upload-invoice-excel',

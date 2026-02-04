@@ -52,7 +52,7 @@ module.exports = (res, orders = []) => {
       mmToPt: MM_TO_PT,
       pageNumber: currentPageNumber
     })
-    pdf.setCopyType('สำเนา')
+    pdf.setCopyType('')
     pdf.invoice(list[i]) // no data mapping yet, placeholders
     currentPageNumber++
   }
@@ -82,7 +82,7 @@ class ReceiptPDF {
   }
 
   setCopyType (type) {
-    this.copyType = type || 'สำเนา'
+    this.copyType = type || ''
   }
 
   // ===== Utilities (mm -> pt) =====
@@ -256,7 +256,7 @@ class ReceiptPDF {
     // บรรทัดขวา (กึ่งกลางระหว่าง 13 กับ 17)
     d.font('THSarabunNew_Bold').fontSize(14)
     d.text(
-      'สำเนาเงินสด / ใบกำกับภาษี',
+      'บิลเงินสด / ใบกำกับภาษี',
       this.mm(10),
       this.mm(15), // ⭐ จุดสำคัญ
       {
@@ -600,6 +600,8 @@ class ReceiptPDF {
     )
 
     this.drawBordersMm(SUM_X, sumY + 21, SUM_W, 7, 'LB')
+
+    // const discountOrder = 
 
     // ===== SUMMARY ขวา =====
     this.cellMm(98, sumY, 25, 7, 'ส่วนลดการค้า', 'TL', 'L', 12)

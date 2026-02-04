@@ -1,12 +1,12 @@
-const express = require('express');
+// const express = require('express');
 
-const { addOrderToMongo } = require('../controller/mongoController/orderController')
-
-
-const router = express.Router()
-
-router.post('/addOrderToMongo', addOrderToMongo)
+// const { addOrderToMongo } = require('../controller/mongoController/orderController')
 
 
+// const router = express.Router()
 
-module.exports = router
+// router.post('/addOrderToMongo', addOrderToMongo)
+
+
+
+// module.exports = router

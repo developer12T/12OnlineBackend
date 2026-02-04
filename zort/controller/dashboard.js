@@ -55,13 +55,13 @@ DasboardView.post('/getData', async (req, res) => {
 
         const StockZortout = await Product.count({ where: { stock: 0 } });
 
-        var StockM3 = await axios.post('http://192.168.2.97:8383/M3API/StockManage/Stock/getStockCount');
+        var StockM3 = await axios.post('http://apps.onetwotrading.co.th/online/api/M3API/StockManage/Stock/getStockCount');
         var countStockM3 = (StockM3.data[0].stockerp);
 
-        var inv = await axios.post('http://192.168.2.97:8383/M3API/OrderManage/Order/getInvNumber', { ordertype: '071' }, {});
+        var inv = await axios.post('http://apps.onetwotrading.co.th/online/api/M3API/OrderManage/Order/getInvNumber', { ordertype: '071' }, {});
         var invM3 = (inv.data[0].customerordno);
 
-        var cono = await axios.post('http://192.168.2.97:8383/M3API/OrderManage/Order/getNumberSeries', {
+        var cono = await axios.post('http://apps.onetwotrading.co.th/online/api/M3API/OrderManage/Order/getNumberSeries', {
             series: "ง",
             seriestype: "01",
             companycode: 410,
@@ -69,13 +69,13 @@ DasboardView.post('/getData', async (req, res) => {
         }, {});
         var conoM3 = (cono.data[0].lastno);
 
-        var OSPE = await axios.post('http://192.168.2.97:8383/M3API/OrderManage/order/getCustomerInv', {
+        var OSPE = await axios.post('http://apps.onetwotrading.co.th/online/api/M3API/OrderManage/order/getCustomerInv', {
             customertype: "107",
             customercode: "OSPE",
         }, {});
         var OSPENO = (OSPE.data[0].customercode);
 
-        var OLAZ = await axios.post('http://192.168.2.97:8383/M3API/OrderManage/order/getCustomerInv', {
+        var OLAZ = await axios.post('http://apps.onetwotrading.co.th/online/api/M3API/OrderManage/order/getCustomerInv', {
             customertype: "107",
             customercode: "OLAZ",
         }, {});

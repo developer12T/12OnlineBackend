@@ -39,7 +39,7 @@ exports.getDataPrintReceipt = async function (list, action) {
 
         var countUpdateorder = 0
         for (let i = 0; i < orderDatup.length; i++) {
-          var numberser = await axios.post('http://192.168.2.97:8383/M3API/OrderManage/Order/getNumberSeries', {
+          var numberser = await axios.post('http://apps.onetwotrading.co.th/online/api/M3API/OrderManage/Order/getNumberSeries', {
             series: 'ง',
             seriestype: '01',
             companycode: 410,
@@ -76,7 +76,7 @@ exports.getDataPrintReceipt = async function (list, action) {
 
         console.log(countUpdateorder)
 
-        var numberser2 = await axios.post('http://192.168.2.97:8383/M3API/OrderManage/Order/getNumberSeries', {
+        var numberser2 = await axios.post('http://apps.onetwotrading.co.th/online/api/M3API/OrderManage/Order/getNumberSeries', {
           series: 'ง',
           seriestype: '01',
           companycode: 410,

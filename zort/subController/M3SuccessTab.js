@@ -1,6 +1,7 @@
 const orderModel = require('../../model/order')
 const customerModel = require('../../model/customer')
 const { getModelsByChannel } = require('../../authen/middleware/channel')
+const { OOHEAD } = require('../../model/master')
 
 function getThaiDayRange (day) {
   return {
@@ -39,6 +40,21 @@ async function M3SuccessTab (res, channel, body) {
       .lean()
     if (!data.length) return []
 
+    const conolist = [...new Set(data.map(o => o.cono).filter(Boolean))]
+
+    const ooheads = await OOHEAD.findAll({
+      attributes: [
+        'OAORNO', // order no
+        'OANTAM' // net amount (ปรับ field ตามจริง)
+      ],
+      where: {
+        OAORNO: conolist
+      },
+      raw: true
+    })
+
+    const ooheadMap = new Map(ooheads.map(r => [r.OAORNO, r.OANTAM]))
+
     // 2️⃣ map เป็น response
     const orders = data.map(row => {
       const items = (row.listProduct || []).map(item => ({
@@ -76,10 +92,17 @@ async function M3SuccessTab (res, channel, body) {
 
       const taxInStatus = row.customeridnumber != '' ? 'ขอใบกำกับภาษี' : ''
 
+      // ⭐ net จาก M3
+      const m3Net = ooheadMap.get(row.cono) ?? null
+
       return {
         id: row.id,
         cono: row.cono,
         invno: row.invno,
+
+        // ===== M3 NET =====
+        netamountM3: m3Net,
+        
         invstatus: taxInStatus,
         orderdate: row.orderdate,
         orderdateString: row.orderdateString,

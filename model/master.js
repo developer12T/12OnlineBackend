@@ -482,6 +482,22 @@ const OOHEAD = sequelize.define(
     OAORTP: {
       type: DataTypes.STRING,
       field: 'OAORTP'
+    },
+    OABRAM: {
+      type: DataTypes.STRING,
+      field: 'OABRAM'
+    },
+    OABRLA: {
+      type: DataTypes.STRING,
+      field: 'OABRLA'
+    },
+    OANTLA: {
+      type: DataTypes.STRING,
+      field: 'OANTLA'
+    },
+    OANTAM: {
+      type: DataTypes.STRING,
+      field: 'OANTAM'
     }
   },
   {

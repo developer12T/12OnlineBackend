@@ -40,7 +40,7 @@ addFile.post('/addFile',upload.single('ItemMaster'), async (req, res) => {
 
            
 
-            const responseM312T = await axios.post('http://192.168.2.97:8383/M3API/ItemManage/Item/getItem',{},{});
+            const responseM312T = await axios.post('http://apps.onetwotrading.co.th/online/api/M3API/ItemManage/Item/getItem',{},{});
             const responseM3Fp = await axios.post('http://127.0.0.1:8383/M3API/ItemManage/Item/getItemFplus',{},{});
             
             // const ItemM312T = responseM312T.data

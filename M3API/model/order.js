@@ -1,181 +1,211 @@
-const { sequelize,DataTypes } = require('../config/dbconnect');
+const { sequelize, DataTypes } = require('../config/dbconnect')
 
-const NumberSeries = sequelize.define('CSYNBR', {
+const NumberSeries = sequelize.define(
+  'CSYNBR',
+  {
     companycode: {
       type: DataTypes.INTEGER,
       allowNull: false,
       field: 'CNCONO'
     },
     series: {
-        type: DataTypes.STRING,
-        allowNull: false,
-        field: 'CNNBID'
+      type: DataTypes.STRING,
+      allowNull: false,
+      field: 'CNNBID'
     },
     seriestype: {
-        type: DataTypes.STRING,
-        allowNull: false,
-        field: 'CNNBTY'
+      type: DataTypes.STRING,
+      allowNull: false,
+      field: 'CNNBTY'
     },
     seriesname: {
-        type: DataTypes.STRING,
-        allowNull: false,
-        field: 'CNNBDE'
+      type: DataTypes.STRING,
+      allowNull: false,
+      field: 'CNNBDE'
     },
     startno: {
-        type: DataTypes.INTEGER,
-        allowNull: false,
-        field: 'CNNBLO'
+      type: DataTypes.INTEGER,
+      allowNull: false,
+      field: 'CNNBLO'
     },
     finalno: {
-        type: DataTypes.INTEGER,
-        allowNull: false,
-        field: 'CNNBHI'
+      type: DataTypes.INTEGER,
+      allowNull: false,
+      field: 'CNNBHI'
     },
     lastno: {
-        type: DataTypes.INTEGER,
-        allowNull: false,
-        field: 'CNNBNR'
+      type: DataTypes.INTEGER,
+      allowNull: false,
+      field: 'CNNBNR'
     }
-  },{freezeTableName:true,timestamps:false,createdAt:false,updatedAt:false,primaryKey:false});
+  },
+  {
+    freezeTableName: true,
+    timestamps: false,
+    createdAt: false,
+    updatedAt: false,
+    primaryKey: false
+  }
+)
 
-const NumberSeriesINV = sequelize.define('CSYNBI', {
+const NumberSeriesINV = sequelize.define(
+  'CSYNBI',
+  {
     companycode: {
       type: DataTypes.INTEGER,
       allowNull: false,
       field: 'C2CONO'
     },
     series: {
-        type: DataTypes.STRING,
-        allowNull: false,
-        field: 'C2NBID'
+      type: DataTypes.STRING,
+      allowNull: false,
+      field: 'C2NBID'
     },
     seriesyear: {
-        type: DataTypes.STRING,
-        allowNull: false,
-        field: 'C2YEA4'
+      type: DataTypes.STRING,
+      allowNull: false,
+      field: 'C2YEA4'
     },
     seriesname: {
-        type: DataTypes.STRING,
-        allowNull: false,
-        field: 'C2NBDE'
+      type: DataTypes.STRING,
+      allowNull: false,
+      field: 'C2NBDE'
     },
     prefixno: {
-        type: DataTypes.STRING,
-        allowNull: false,
-        field: 'C2INPX'
+      type: DataTypes.STRING,
+      allowNull: false,
+      field: 'C2INPX'
     },
     startno: {
-        type: DataTypes.INTEGER,
-        allowNull: false,
-        field: 'C2NBLO'
+      type: DataTypes.INTEGER,
+      allowNull: false,
+      field: 'C2NBLO'
     },
     finalno: {
-        type: DataTypes.INTEGER,
-        allowNull: false,
-        field: 'C2NBHI'
+      type: DataTypes.INTEGER,
+      allowNull: false,
+      field: 'C2NBHI'
     },
     lastno: {
-        type: DataTypes.INTEGER,
-        allowNull: false,
-        field: 'C2NBNR'
+      type: DataTypes.INTEGER,
+      allowNull: false,
+      field: 'C2NBNR'
     }
-  },{freezeTableName:true,timestamps:false,createdAt:false,updatedAt:false,primaryKey:false});
+  },
+  {
+    freezeTableName: true,
+    timestamps: false,
+    createdAt: false,
+    updatedAt: false,
+    primaryKey: false
+  }
+)
 
-const COHead = sequelize.define('OOHEAD', {
+const COHead = sequelize.define(
+  'OOHEAD',
+  {
     companycode: {
       type: DataTypes.INTEGER,
       allowNull: false,
       field: 'OACONO'
     },
     orderno: {
-        type: DataTypes.STRING,
-        allowNull: false,
-        field: 'OAORNO'
+      type: DataTypes.STRING,
+      allowNull: false,
+      field: 'OAORNO'
     },
     ordertype: {
-        type: DataTypes.STRING,
-        allowNull: false,
-        field: 'OAORTP'
+      type: DataTypes.STRING,
+      allowNull: false,
+      field: 'OAORTP'
     },
     warehouse: {
-        type: DataTypes.STRING,
-        allowNull: false,
-        field: 'OAWHLO'
+      type: DataTypes.STRING,
+      allowNull: false,
+      field: 'OAWHLO'
     },
     lowsts: {
-        type: DataTypes.STRING,
-        allowNull: false,
-        field: 'OAORST'
+      type: DataTypes.STRING,
+      allowNull: false,
+      field: 'OAORST'
     },
     highsts: {
-        type: DataTypes.STRING,
-        allowNull: false,
-        field: 'OAORSL'
+      type: DataTypes.STRING,
+      allowNull: false,
+      field: 'OAORSL'
     },
     customercode: {
-        type: DataTypes.STRING,
-        allowNull: false,
-        field: 'OACUNO'
+      type: DataTypes.STRING,
+      allowNull: false,
+      field: 'OACUNO'
     },
     orderdate: {
-        type: DataTypes.INTEGER,
-        allowNull: false,
-        field: 'OAORDT'
+      type: DataTypes.INTEGER,
+      allowNull: false,
+      field: 'OAORDT'
     },
     senddate: {
-        type: DataTypes.INTEGER,
-        allowNull: false,
-        field: 'OARLDT'
+      type: DataTypes.INTEGER,
+      allowNull: false,
+      field: 'OARLDT'
     },
     addresscode: {
-        type: DataTypes.STRING,
-        allowNull: false,
-        field: 'OAADID'
+      type: DataTypes.STRING,
+      allowNull: false,
+      field: 'OAADID'
     },
     salecode: {
-        type: DataTypes.STRING,
-        allowNull: false,
-        field: 'OASMCD'
+      type: DataTypes.STRING,
+      allowNull: false,
+      field: 'OASMCD'
     },
     orderref: {
-        type: DataTypes.STRING,
-        allowNull: false,
-        field: 'OAOREF'
+      type: DataTypes.STRING,
+      allowNull: false,
+      field: 'OAOREF'
     },
     ordernote: {
-        type: DataTypes.STRING,
-        allowNull: false,
-        field: 'OAYREF'
+      type: DataTypes.STRING,
+      allowNull: false,
+      field: 'OAYREF'
     },
     payer: {
-        type: DataTypes.STRING,
-        allowNull: false,
-        field: 'OAPYNO'
+      type: DataTypes.STRING,
+      allowNull: false,
+      field: 'OAPYNO'
     },
     grossweight: {
-        type: DataTypes.INTEGER,
-        allowNull: false,
-        field: 'OAGRWE'
+      type: DataTypes.INTEGER,
+      allowNull: false,
+      field: 'OAGRWE'
     },
     netweight: {
-        type: DataTypes.INTEGER,
-        allowNull: false,
-        field: 'OAGRWE'
+      type: DataTypes.INTEGER,
+      allowNull: false,
+      field: 'OAGRWE'
     },
     ordervalue: {
-        type: DataTypes.INTEGER,
-        allowNull: false,
-        field: 'OANTLA'
+      type: DataTypes.INTEGER,
+      allowNull: false,
+      field: 'OANTLA'
     },
     customerordno: {
-        type: DataTypes.STRING,
-        allowNull: false,
-        field: 'OACUOR'
+      type: DataTypes.STRING,
+      allowNull: false,
+      field: 'OACUOR'
     }
-  },{freezeTableName:true,timestamps:false,createdAt:false,updatedAt:false,primaryKey:false});
+  },
+  {
+    freezeTableName: true,
+    timestamps: false,
+    createdAt: false,
+    updatedAt: false,
+    primaryKey: false
+  }
+)
 
-  module.exports = {
-    NumberSeries,
-    NumberSeriesINV,
-    COHead
-};
+module.exports = {
+  NumberSeries,
+  NumberSeriesINV,
+  COHead
+}
