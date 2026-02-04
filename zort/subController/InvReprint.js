@@ -18,7 +18,9 @@ async function InvReprint (res, channel, dateFilter = {}) {
       }
     }
 
-    // whereClause.cono = '1267104417'
+    whereClause.status = {
+      $ne: 'Cancelled'
+    }
 
     const data = await Order.find(whereClause, {
       updatedAt: 1,
@@ -36,7 +38,6 @@ async function InvReprint (res, channel, dateFilter = {}) {
       .lean()
 
     const orders = data.map(row => {
-
       const items = (row.listProduct || []).map(item => ({
         productid: item.productid,
         sku: item.sku?.split('_')[0],
