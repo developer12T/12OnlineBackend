@@ -5,13 +5,19 @@ const customerModel = require('../../model/customer')
 const { getModelsByChannel } = require('../../authen/middleware/channel')
 const moment = require('moment')
 
-
 function getThaiDayRange (day) {
   return {
     start: new Date(`${day}T00:00:00.000+07:00`),
     end: new Date(`${day}T23:59:59.999+07:00`)
   }
 }
+
+function nextDay (date) {
+  const d = new Date(date)
+  d.setUTCDate(d.getUTCDate() + 1)
+  return d.toISOString().slice(0, 10)
+}
+
 async function M3WaitTab (res, channel, body) {
   try {
     const { Order } = getModelsByChannel(channel, res, orderModel)
@@ -20,7 +26,10 @@ async function M3WaitTab (res, channel, body) {
     let dateCondition = {}
     if (date) {
       const { start, end } = getThaiDayRange(date)
-      dateCondition.updatedAt = { $gte: start, $lte: end }
+      dateCondition.printdatetimeString = {
+        $gte: date, // '2026-01-28'
+        $lt: nextDay(date) // '2026-01-29'
+      }
     }
 
     const data = await Order.find({
@@ -30,7 +39,7 @@ async function M3WaitTab (res, channel, body) {
       invno: { $ne: '' },
       ...dateCondition
     })
-      .sort({ updatedAt: -1 })
+      .sort({ printdatetimeString: -1 })
       .lean()
 
     if (!data.length) return []

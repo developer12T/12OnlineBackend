@@ -15,6 +15,12 @@ function getThaiDayRange (day) {
   }
 }
 
+function nextDay (date) {
+  const d = new Date(date)
+  d.setUTCDate(d.getUTCDate() + 1)
+  return d.toISOString().slice(0, 10)
+}
+
 async function receiptWaitTab (res, channel, body = {}) {
   try {
     const { Order } = getModelsByChannel(channel, res, orderModel)
@@ -30,6 +36,10 @@ async function receiptWaitTab (res, channel, body = {}) {
         $gte: start,
         $lte: end
       }
+      // dateCondition.printdatetimeString = {
+      //   $gte: date, // '2026-01-28'
+      //   $lt: nextDay(date) // '2026-01-29'
+      // }
     }
 
     const data = await Order.find({

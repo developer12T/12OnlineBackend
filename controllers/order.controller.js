@@ -5,7 +5,7 @@ const customerModel = require('../model/customer')
 const productModel = require('../model/product')
 const { getModelsByChannel } = require('../authen/middleware/channel')
 const receiptWaitTab = require('../zort/subController/ReceiptWaitTab')
-const receiptSuccessTab = require('../zort/subController/ReceiptSuccessTab')
+const receiptSuccessTab = require('../zort/subController/receiptSuccessTab')
 const M3WaitTab = require('../zort/subController/M3WaitTab')
 const M3SuccessTab = require('../zort/subController/M3SuccessTab')
 const CancelledTab = require('../zort/subController/CancelledTab')
@@ -120,7 +120,7 @@ exports.exportOrderExcel = async (req, res) => {
       const start = new Date(`${startDate}T00:00:00+07:00`)
       const end = new Date(`${endDate}T23:59:59.999+07:00`)
 
-      dateCondition.updatedAt = {
+      dateCondition.createdAt = {
         $gte: start,
         $lte: end
       }
@@ -132,7 +132,7 @@ exports.exportOrderExcel = async (req, res) => {
 
     const orders = await Order.find({
       ...dateCondition,
-      status: { $nin: ['Voided', 'Cancelled'] },
+      // status: { $nin: ['Voided', 'Cancelled'] },
       statusM3: { $eq: 'success' },
       cono: { $ne: '' },
       invno: { $ne: '' }
@@ -1558,30 +1558,10 @@ exports.updateInvFromExcel = async (req, res) => {
       return res.status(400).json({ message: 'Excel is empty' })
     }
 
-    /**
-     * rows example:
-     * { Invo: 2569171001934, SUM: 14 }
-     */
-
-    // 2️⃣ build bulk ops
-    // const ops = rows
-    //   .filter(r => r.Invo && r.SUM !== undefined)
-    //   .map(r => ({
-    //     updateOne: {
-    //       filter: {
-    //         invno: String(r.Invo) // 🔥 map Invo -> invno
-    //       },
-    //       update: {
-    //         $set: {
-    //           amount: Number(r.SUM)
-    //           // updatedAt: new Date()
-    //         }
-    //       }
-    //     }
-    //   }))
+    const round2 = n => Math.round((Number(n) + Number.EPSILON) * 100) / 100
 
     const ops = rows
-      .filter(r => r.Invo && r.date)
+      .filter(r => r.Invo && r.amount)
       .map(r => ({
         updateOne: {
           filter: {
@@ -1589,12 +1569,16 @@ exports.updateInvFromExcel = async (req, res) => {
           },
           update: {
             $set: {
-              printdatetimeString: excelSerialWithNowTime(r.date)
-              // หรือใช้ parseExcelDateWithNowTime(r.date)
+              amount: round2(r.amount)
             }
           }
         }
       }))
+
+    // res.json({
+    //   message: 'Excel processed successfully',
+    //   totalRows: rows
+    // })
 
     if (!ops.length) {
       return res.status(400).json({ message: 'No valid rows to update' })
@@ -1609,13 +1593,6 @@ exports.updateInvFromExcel = async (req, res) => {
       matched: result.matchedCount,
       modified: result.modifiedCount
     })
-
-    // res.json({
-    //   message: 'Excel processed successfully',
-    //   totalRows: rows
-    //   // matched: result.matchedCount,
-    //   // modified: result.modifiedCount
-    // })
   } catch (error) {
     console.error('[updateInvFromExcel]', error)
     res.status(500).json({ message: 'Internal server error' })
