@@ -249,6 +249,7 @@ exports.handleOrderPaid = async data => {
     }
   }
 
+  //
   // ป้องกันติดลบ
   if (sellerDiscount < 0) sellerDiscount = 0
 
@@ -276,11 +277,23 @@ exports.handleOrderPaid = async data => {
 
     const pricePerUnitOri = netItemAmount / newQty
 
-    item.quantity = newQty // ✅ จุดที่หายไป
-    item.pricePerUnitOri = pricePerUnitOri
-    item.pricePerUnit = pricePerUnitOri
-    item.totalprice = total // คงราคาก่อน platform discount
+    if (data.saleschannel === 'Shopee') {
+      const pricePerUnitOriSHTotal = Number(item.pricePerUnitOri || 0)
+      const pricePerUnitOriSH = pricePerUnitOriSHTotal / newQty
+      const netItemAmountSH = pricePerUnitOriSH * newQty
+
+      item.quantity = newQty // ✅ จุดที่หายไป
+      item.pricePerUnitOri = pricePerUnitOriSH
+      item.pricePerUnit = pricePerUnitOriSH
+      item.totalprice = netItemAmountSH
+    } else {
+      item.quantity = newQty // ✅ จุดที่หายไป
+      item.pricePerUnitOri = pricePerUnitOri
+      item.pricePerUnit = pricePerUnitOri
+      item.totalprice = total // คงราคาก่อน platform discount
+    }
   }
+
   // ================================
   // SET PROCODE FOR FREE / PREMIUM
   // ================================
