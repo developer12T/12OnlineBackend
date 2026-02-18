@@ -204,6 +204,13 @@ function splitItemGrouped (item) {
   }))
 }
 
+function resequenceItemNumber (list) {
+  return list.map((item, index) => ({
+    ...item,
+    itemNumber: index + 1
+  }))
+}
+
 exports.handleOrderPaid = async data => {
   const channel = 'uat'
   const { Order } = getModelsByChannel(channel, null, orderModel)
@@ -397,7 +404,7 @@ exports.handleOrderPaid = async data => {
       }
     }
 
-    listProduct = expanded
+    listProduct = resequenceItemNumber(expanded)
   }
 
   // ================================
