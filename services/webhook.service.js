@@ -145,6 +145,21 @@ async function insertCustomerToErp (orderData) {
   return customerNo
 }
 
+function splitMoney (total, parts) {
+  const totalCents = Math.round(total * 100)
+
+  const base = Math.floor(totalCents / parts)
+  const remainder = totalCents - base * parts
+
+  const result = Array(parts).fill(base)
+
+  for (let i = 0; i < remainder; i++) {
+    result[i] += 1
+  }
+
+  return result.map(c => c / 100)
+}
+
 function splitItemGrouped (item) {
   const qty = Number(item.quantity)
   const total = Number(item.totalprice)
