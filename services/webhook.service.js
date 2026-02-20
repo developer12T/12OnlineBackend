@@ -379,32 +379,33 @@ exports.handleOrderPaid = async data => {
   {
     const expanded = []
 
-    for (const item of listProduct) {
-      if (isRoundingMismatch(item)) {
-        const splitted = splitItemGrouped(item)
+    if (data.saleschannel == 'Lazada') {
+      for (const item of listProduct) {
+        if (isRoundingMismatch(item)) {
+          const splitted = splitItemGrouped(item)
 
-        // optional debug log
-        console.log('[ERP ROUND SPLIT]', {
-          itemCode: item.itemCode,
-          before: {
-            qty: item.quantity,
-            unit: item.pricePerUnitOri,
-            total: item.totalprice
-          },
-          after: splitted.map(s => ({
-            qty: s.quantity,
-            unit: s.pricePerUnitOri,
-            total: s.totalprice
-          }))
-        })
+          // optional debug log
+          console.log('[ERP ROUND SPLIT]', {
+            itemCode: item.itemCode,
+            before: {
+              qty: item.quantity,
+              unit: item.pricePerUnitOri,
+              total: item.totalprice
+            },
+            after: splitted.map(s => ({
+              qty: s.quantity,
+              unit: s.pricePerUnitOri,
+              total: s.totalprice
+            }))
+          })
 
-        expanded.push(...splitted)
-      } else {
-        expanded.push(item)
+          expanded.push(...splitted)
+        } else {
+          expanded.push(item)
+        }
       }
+      listProduct = resequenceItemNumber(expanded)
     }
-
-    listProduct = resequenceItemNumber(expanded)
   }
 
   // ================================
