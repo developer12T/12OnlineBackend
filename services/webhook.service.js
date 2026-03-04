@@ -272,8 +272,14 @@ exports.handleOrderPaid = async data => {
     const newQty = qtyPack * multiplier
 
     // ราคาสุทธิหลังหักส่วนลดสินค้า
-    const netItemAmount = total + discount
+    // Shopee ใช้ pricePerUnitOri จากไป (มี discount ใน listProduct)
+    // Channel อื่นคำนวณจาก total + discount (ระบบไปหักเองแล้ว)
+    const netItemAmount = (data.saleschannel === 'Shopee' && Number(item.pricePerUnitOri) > 0)
+      ? item.pricePerUnitOri
+      : total + discount
 
+
+      
     const pricePerUnitOri = netItemAmount / newQty
 
     item.quantity = newQty // ✅ จุดที่หายไป
