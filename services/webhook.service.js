@@ -55,6 +55,17 @@ function splitShippingAddress4 (address = '') {
   }
 }
 
+function isRoundingMismatch (item) {
+  const qty = Number(item.quantity || 0)
+  const unit = Number(item.pricePerUnitOri || 0)
+  const total = Number(item.totalprice || 0)
+
+  if (!qty || !unit) return false
+
+  const calc = Math.round(unit * qty * 100) / 100
+  return calc !== Math.round(total * 100) / 100
+}
+
 async function findCustomerByTaxNo (taxno) {
   if (!taxno) return null
 
@@ -132,6 +143,72 @@ async function insertCustomerToErp (orderData) {
 
   console.log(`[ERP] Customer inserted ${customerNo}`)
   return customerNo
+}
+
+function splitMoney (total, parts) {
+  const totalCents = Math.round(total * 100)
+
+  const base = Math.floor(totalCents / parts)
+  const remainder = totalCents - base * parts
+
+  const result = Array(parts).fill(base)
+
+  for (let i = 0; i < remainder; i++) {
+    result[i] += 1
+  }
+
+  return result.map(c => c / 100)
+}
+
+function splitItemGrouped (item) {
+  const qty = Number(item.quantity)
+  const total = Number(item.totalprice)
+  const discount = Number(item.discount || 0)
+
+  if (!qty || !total) return [item]
+
+  // 1️⃣ split price ต่อชิ้น
+  const unitPrices = splitMoney(total, qty)
+
+  // 2️⃣ split discount ต่อชิ้น
+  const discountParts = splitMoney(discount, qty)
+
+  // 3️⃣ group ตาม price
+  const map = new Map()
+
+  unitPrices.forEach((price, i) => {
+    const key = price.toFixed(2)
+
+    if (!map.has(key)) {
+      map.set(key, {
+        ...item,
+        quantity: 0,
+        pricePerUnitOri: price,
+        pricePerUnit: price,
+        totalprice: 0,
+        discount: 0
+      })
+    }
+
+    const row = map.get(key)
+    row.quantity += 1
+    row.totalprice += price
+    row.discount += discountParts[i]
+  })
+
+  // 4️⃣ fix floating precision
+  return Array.from(map.values()).map(r => ({
+    ...r,
+    totalprice: Math.round(r.totalprice * 100) / 100,
+    discount: Math.round(r.discount * 100) / 100
+  }))
+}
+
+function resequenceItemNumber (list) {
+  return list.map((item, index) => ({
+    ...item,
+    itemNumber: index + 1
+  }))
 }
 
 exports.handleOrderPaid = async data => {
@@ -249,6 +326,7 @@ exports.handleOrderPaid = async data => {
     }
   }
 
+  //
   // ป้องกันติดลบ
   if (sellerDiscount < 0) sellerDiscount = 0
 
@@ -282,11 +360,60 @@ exports.handleOrderPaid = async data => {
 
     const pricePerUnitOri = netItemAmount / newQty
 
-    item.quantity = newQty // ✅ จุดที่หายไป
-    item.pricePerUnitOri = pricePerUnitOri
-    item.pricePerUnit = pricePerUnitOri
-    item.totalprice = total // คงราคาก่อน platform discount
+    if (data.saleschannel === 'Shopee') {
+      const pricePerUnitOriSHTotal = Number(item.pricePerUnitOri || 0)
+      const pricePerUnitOriSH =
+        (pricePerUnitOriSHTotal * item.quantity) / newQty
+
+      const netItemAmountSH = pricePerUnitOriSH * newQty
+
+      item.quantity = newQty // ✅ จุดที่หายไป
+      item.pricePerUnitOri = pricePerUnitOriSH
+      item.pricePerUnit = pricePerUnitOriSH
+      item.totalprice = netItemAmountSH
+    } else {
+      item.quantity = newQty // ✅ จุดที่หายไป
+      item.pricePerUnitOri = pricePerUnitOri
+      item.pricePerUnit = pricePerUnitOri
+      item.totalprice = total // คงราคาก่อน platform discount
+    }
   }
+
+  // ================================
+  // FIX ROUNDING MISMATCH (ERP SAFE)
+  // ================================
+  {
+    const expanded = []
+
+    if (data.saleschannel == 'Lazada') {
+      for (const item of listProduct) {
+        if (isRoundingMismatch(item)) {
+          const splitted = splitItemGrouped(item)
+
+          // optional debug log
+          console.log('[ERP ROUND SPLIT]', {
+            itemCode: item.itemCode,
+            before: {
+              qty: item.quantity,
+              unit: item.pricePerUnitOri,
+              total: item.totalprice
+            },
+            after: splitted.map(s => ({
+              qty: s.quantity,
+              unit: s.pricePerUnitOri,
+              total: s.totalprice
+            }))
+          })
+
+          expanded.push(...splitted)
+        } else {
+          expanded.push(item)
+        }
+      }
+      listProduct = resequenceItemNumber(expanded)
+    }
+  }
+
   // ================================
   // SET PROCODE FOR FREE / PREMIUM
   // ================================

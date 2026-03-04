@@ -14,6 +14,12 @@ function getThaiDayRange (day) {
   }
 }
 
+function nextDay (date) {
+  const d = new Date(date)
+  d.setUTCDate(d.getUTCDate() + 1)
+  return d.toISOString().slice(0, 10)
+}
+
 async function receiptSuccessTab (res, channel, body = {}) {
   try {
     const { Order } = getModelsByChannel(channel, res, orderModel)
@@ -21,9 +27,13 @@ async function receiptSuccessTab (res, channel, body = {}) {
     console.log(body)
 
     let dateCondition = {}
+
     if (date) {
-      const { start, end } = getThaiDayRange(date)
-      dateCondition.updatedAt = { $gte: start, $lte: end }
+      // const { start, end } = getThaiDayRange(date)
+      dateCondition.printdatetimeString = {
+        $gte: date, // '2026-01-28'
+        $lt: nextDay(date) // '2026-01-29'
+      }
     }
 
     // 1️⃣ ดึง Order อย่างเดียว
@@ -34,9 +44,10 @@ async function receiptSuccessTab (res, channel, body = {}) {
         { statusPrininvSuccess: '001' },
         { statusPrininvSuccess: '002' }
       ],
+      statusM3: { $ne: 'success' },
       ...dateCondition
     })
-      .sort({ updatedAt: -1 })
+      .sort({ printdatetimeString: -1 })
       .lean()
 
     if (!data.length) return []

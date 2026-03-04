@@ -10,6 +10,12 @@ function getThaiDayRange (day) {
   }
 }
 
+function nextDay (date) {
+  const d = new Date(date)
+  d.setUTCDate(d.getUTCDate() + 1)
+  return d.toISOString().slice(0, 10)
+}
+
 async function M3SuccessTab (res, channel, body) {
   try {
     const { Order } = getModelsByChannel(channel, res, orderModel)
@@ -21,9 +27,9 @@ async function M3SuccessTab (res, channel, body) {
 
     if (date) {
       const { start, end } = getThaiDayRange(date)
-      dateCondition.updatedAt = {
-        $gte: start,
-        $lte: end
+      dateCondition.printdatetimeString = {
+        $gte: date, // '2026-01-28'
+        $lt: nextDay(date) // '2026-01-29'
       }
     }
 
@@ -36,7 +42,7 @@ async function M3SuccessTab (res, channel, body) {
       invno: { $ne: '' },
       ...dateCondition
     })
-      .sort({ updatedAt: -1 })
+      .sort({ printdatetimeString: -1 })
       .lean()
     if (!data.length) return []
 
@@ -102,7 +108,7 @@ async function M3SuccessTab (res, channel, body) {
 
         // ===== M3 NET =====
         netamountM3: m3Net,
-        
+
         invstatus: taxInStatus,
         orderdate: row.orderdate,
         orderdateString: row.orderdateString,
