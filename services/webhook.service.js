@@ -531,7 +531,12 @@ exports.handleOrderPaid = async data => {
   // ================================
   // CREATE OR UPDATE
   // ================================
-  const finalAmount = calculateOrderAmount(listProduct)
+  let finalAmount = calculateOrderAmount(listProduct)
+
+  // 🔍 เช็ค Lazada → เพิ่ม platformdiscount แม็กเพิ่มวันที่ 22/4/26
+  if (data.saleschannel === 'Lazada' && Number(data.platformdiscount) > 0) {
+    finalAmount += Number(data.platformdiscount)
+  }
 
   if (!order) {
     await Order.create({
