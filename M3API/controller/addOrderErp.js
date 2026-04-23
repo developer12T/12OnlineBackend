@@ -118,7 +118,7 @@ addOrderErp.post('/addOrderErp', async (req, res) => {
           list[i].discount === null ||
           list[i].discount === '' ||
           list[i].discount === 0 ||
-          list[i].discount === '0'
+          list[i].discount === '0' || orderData.saleschannel === 'Lazada'
         ) {
           var dis2 = 0
         } else {
@@ -316,7 +316,7 @@ addOrderErpRepair.post('/addOrderErpRepairHis', async (req, res) => {
           list[i].discount === null ||
           list[i].discount === '' ||
           list[i].discount === 0 ||
-          list[i].discount === '0'
+          list[i].discount === '0' || orderData.saleschannel === 'Lazada'
         ) {
           var dis2 = 0
         } else {
@@ -514,7 +514,7 @@ addOrderErpRepair.post('/addOrderErpRepair', async (req, res) => {
           list[i].discount === null ||
           list[i].discount === '' ||
           list[i].discount === 0 ||
-          list[i].discount === '0'
+          list[i].discount === '0' || orderData.saleschannel === 'Lazada'
         ) {
           var dis2 = 0
         } else {

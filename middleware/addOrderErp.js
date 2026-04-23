@@ -104,7 +104,7 @@ addOrderErp.post('/addOrderErp', async (req, res) => {
                     var qty = list[i].number
                 }
 
-                if (list[i].discount === null || list[i].discount === '' || list[i].discount === 0 || list[i].discount === '0') {
+                if (list[i].discount === null || list[i].discount === '' || list[i].discount === 0 || list[i].discount === '0' || orderData.saleschannel === 'Lazada') {
                     var dis2 = 0
                 } else {
                     var dis2 = list[i].discount
@@ -281,7 +281,7 @@ addOrderErpRepair.post('/addOrderErpRepairHis', async (req, res) => {
                 }
                 // console.log('akjsdhajklsdghjklasdg ::::'+list[i]);
 
-                if (list[i].discount === null || list[i].discount === '' || list[i].discount === 0 || list[i].discount === '0') {
+                if (list[i].discount === null || list[i].discount === '' || list[i].discount === 0 || list[i].discount === '0' || orderData.saleschannel === 'Lazada') {
                     var dis2 = 0
                 } else {
                     var dis2 = list[i].discount
@@ -459,7 +459,7 @@ addOrderErpRepair.post('/addOrderErpRepair', async (req, res) => {
                 }
                 // console.log('akjsdhajklsdghjklasdg ::::'+list[i]);
 
-                if (list[i].discount === null || list[i].discount === '' || list[i].discount === 0 || list[i].discount === '0') {
+                if (list[i].discount === null || list[i].discount === '' || list[i].discount === 0 || list[i].discount === '0' || orderData.saleschannel === 'Lazada') {
                     var dis2 = 0
                 } else {
                     var dis2 = list[i].discount
