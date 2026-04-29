@@ -371,6 +371,11 @@ exports.handleOrderPaid = async data => {
       item.pricePerUnitOri = pricePerUnitOriSH
       item.pricePerUnit = pricePerUnitOriSH
       item.totalprice = netItemAmountSH
+    } else if (data.saleschannel === 'TIKTOK') {
+      // 🔴 TIKTOK: ใช้ค่าจาก callback โดยตรง ไม่คำนวณซ้ำ
+      item.quantity = newQty // ✅ อัปเดต qty ตาม multiplier
+      // item.pricePerUnitOri และ item.pricePerUnit คงค่าเดิมจาก callback
+      item.totalprice = total // คงราคา totalprice เดิม
     } else {
       item.quantity = newQty // ✅ จุดที่หายไป
       item.pricePerUnitOri = pricePerUnitOri
