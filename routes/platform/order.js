@@ -17,6 +17,12 @@ const {
   exportOrderStockExcel
 } = require('../../controllers/order.controller')
 
+const {
+  searchOrder,
+  updateOrderShipping,
+  getOrderByNumber
+} = require('../../controllers/onlineOrder.controller')
+
 const upload = require('../../middleware/uploadExcel')
 
 const router = express.Router()
@@ -33,6 +39,11 @@ router.get('/updateInvoiceAndCo', updateInvoiceAndCo)
 router.get('/updateItemNameM3', updateItemNameM3)
 router.get('/updateInvoNumber', updateInvoNumber)
 router.post('/export-summary', exportOrderStockExcel)
+
+// Online Portal - Search and Update Orders
+router.post('/search', searchOrder)
+router.put('/update/:orderNumber', updateOrderShipping)
+router.get('/:orderNumber', getOrderByNumber)
 
 router.post(
   '/upload-invoice-excel',
