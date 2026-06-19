@@ -79,7 +79,7 @@ exports.getOrdersForPrint2 = async checklist => {
     }
   )
     .lean()
-    .sort({ createdatetime: 1 })
+    .sort({ invno: 1 })
 }
 
 /**
@@ -246,7 +246,7 @@ exports.getOrdersForPrint = async checklist => {
     }
   )
     .lean()
-    .sort({ createdatetime: 1 })
+    .sort({ invno: 1 })
 
   if (!orders.length) return []
 
@@ -373,7 +373,7 @@ exports.getOrdersForPrint2 = async checklist => {
     }
   )
     .lean()
-    .sort({ createdatetime: 1 })
+    .sort({ invno: 1 })
 }
 
 /**
@@ -414,7 +414,7 @@ exports.getOrdersForPrintCopy = async checklist => {
     }
   )
     .lean()
-    .sort({ createdatetime: 1 })
+    .sort({ invno: 1 })
 
   // 2️⃣ update เฉพาะ totalprint (ไม่มี updatedAt)
   for (const order of orders) {
