@@ -35,15 +35,20 @@ async function M3SuccessTab (res, channel, body) {
 
     console.log(dateCondition)
 
-    const data = await Order.find({
+    // ⚠️ ป้องกันหน้าเว็บค้าง/พังตอนไม่ได้ส่ง date มา (ดึงข้อมูลทั้งหมดตั้งแต่เปิดระบบ)
+    const MAX_ROWS_WITHOUT_DATE = 3000
+
+    const query = Order.find({
       status: { $nin: ['Voided', 'Cancelled'] },
       statusM3: { $eq: 'success' },
       cono: { $ne: '' },
       invno: { $ne: '' },
       ...dateCondition
-    })
-      .sort({ printdatetimeString: -1 })
-      .lean()
+    }).sort({ printdatetimeString: -1 })
+
+    if (!date) query.limit(MAX_ROWS_WITHOUT_DATE)
+
+    const data = await query.lean()
     if (!data.length) return []
 
     const conolist = [...new Set(data.map(o => o.cono).filter(Boolean))]

@@ -76,6 +76,16 @@ async function findCustomerByTaxNo (taxno) {
   })
 }
 
+// กัน field ที่มาจาก marketplace เพี้ยน (เช่น ผู้ซื้อกรอกที่อยู่/เลขภาษีปนมาใน "ชื่อบริษัท"
+// พร้อม newline) ก่อนยิงเข้า ERP ซึ่งมักจำกัดความยาว/ไม่รับ control character
+function sanitizeErpText (text, maxLen = 100) {
+  return String(text || '')
+    .replace(/[\r\n\t]+/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim()
+    .slice(0, maxLen)
+}
+
 async function insertCustomerToErp (orderData) {
   const taxno = orderData.customeridnumber?.trim()
   if (!taxno) return null
@@ -102,7 +112,7 @@ async function insertCustomerToErp (orderData) {
     Hcase: 1,
     customerNo,
     customerStatus: '20',
-    customerName: orderData.customername,
+    customerName: sanitizeErpText(orderData.customername),
     customerChannel: '107',
     customerCoType: '071',
     customerAddress1: shippingAddress1,
@@ -231,9 +241,19 @@ exports.handleOrderPaid = async data => {
   }
 
   if (data.customeridnumber) {
-    const customerNo = await insertCustomerToErp(data)
-    console.log(`[ERP] Customer created ${customerNo} (${data.saleschannel})`)
-    data.customercode = customerNo
+    // ⚠️ ห้ามให้ ERP ล่ม/reject แล้วพาให้ทั้งออเดอร์หายไปทั้งใบ (ไม่ถูกบันทึกเลย)
+    // ถ้าสร้างลูกค้า ERP ไม่สำเร็จ ให้ log ไว้แล้วบันทึกออเดอร์ต่อโดยไม่มี customercode
+    // (ไปสร้างใบกำกับภาษี/ผูก customer ทีหลังได้)
+    try {
+      const customerNo = await insertCustomerToErp(data)
+      console.log(`[ERP] Customer created ${customerNo} (${data.saleschannel})`)
+      data.customercode = customerNo
+    } catch (err) {
+      console.error(
+        `[ERP] insertCustomerToErp failed for order ${orderNumber} (${data.saleschannel}):`,
+        err.response?.data || err.message
+      )
+    }
   }
 
   // ดึง itemCode หลัก (suffix[0])
