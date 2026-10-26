@@ -24,7 +24,6 @@ const {
 } = require('../../controllers/onlineOrder.controller')
 
 const upload = require('../../middleware/uploadExcel')
-const auth = require('../../authen/middleware/auth')
 
 const router = express.Router()
 
@@ -41,10 +40,10 @@ router.get('/updateItemNameM3', updateItemNameM3)
 router.get('/updateInvoNumber', updateInvoNumber)
 router.post('/export-summary', exportOrderStockExcel)
 
-// Online Portal - Search and Update Orders (ต้อง login)
-router.post('/search', auth, searchOrder)
-router.put('/update/:orderNumber', auth, updateOrderShipping)
-router.get('/:orderNumber', auth, getOrderByNumber)
+// Online Portal - Search and Update Orders
+router.post('/search', searchOrder)
+router.put('/update/:orderNumber', updateOrderShipping)
+router.get('/:orderNumber', getOrderByNumber)
 
 router.post(
   '/upload-invoice-excel',
