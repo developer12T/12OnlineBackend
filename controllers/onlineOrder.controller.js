@@ -38,6 +38,7 @@ exports.searchOrder = async (req, res) => {
     const mappedOrder = {
       orderNumber: order.number,
       customerName: order.customername || '',
+      customerIdNumber: order.customeridnumber || '',
       phone: order.shippingphone || '',
       address: order.shippingaddress || '',
       province: order.shippingprovince || '',
@@ -73,8 +74,8 @@ exports.updateOrderShipping = async (req, res) => {
   try {
     const channel = req.headers['x-channel']
     const { orderNumber } = req.params
-    // แก้ได้เฉพาะข้อมูลออกใบกำกับภาษี: ชื่อ, ที่อยู่
-    const { customerName, address } = req.body
+    // แก้ได้เฉพาะข้อมูลออกใบกำกับภาษี: ชื่อ, เลขผู้เสียภาษี, ที่อยู่
+    const { customerName, customerIdNumber, address } = req.body
 
     if (!channel) {
       return res.status(400).json({
@@ -97,12 +98,13 @@ exports.updateOrderShipping = async (req, res) => {
     const updateData = {}
 
     if (customerName !== undefined) updateData.customername = customerName
+    if (customerIdNumber !== undefined) updateData.customeridnumber = customerIdNumber
     if (address !== undefined) updateData.shippingaddress = address
 
     if (Object.keys(updateData).length === 0) {
       return res.status(400).json({
         status: 400,
-        message: 'Nothing to update (customerName, address)'
+        message: 'Nothing to update (customerName, customerIdNumber, address)'
       })
     }
 
@@ -127,6 +129,7 @@ exports.updateOrderShipping = async (req, res) => {
     const mappedOrder = {
       orderNumber: updatedOrder.number,
       customerName: updatedOrder.customername || '',
+      customerIdNumber: updatedOrder.customeridnumber || '',
       phone: updatedOrder.shippingphone || '',
       address: updatedOrder.shippingaddress || '',
       province: updatedOrder.shippingprovince || '',
@@ -192,6 +195,7 @@ exports.getOrderByNumber = async (req, res) => {
     const mappedOrder = {
       orderNumber: order.number,
       customerName: order.customername || '',
+      customerIdNumber: order.customeridnumber || '',
       phone: order.shippingphone || '',
       address: order.shippingaddress || '',
       province: order.shippingprovince || '',
