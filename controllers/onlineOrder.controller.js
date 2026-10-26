@@ -37,7 +37,7 @@ exports.searchOrder = async (req, res) => {
     // Map MongoDB fields to frontend format
     const mappedOrder = {
       orderNumber: order.number,
-      customerName: order.shippingname || order.customername || '',
+      customerName: order.customername || '',
       phone: order.shippingphone || '',
       address: order.shippingaddress || '',
       province: order.shippingprovince || '',
@@ -73,16 +73,8 @@ exports.updateOrderShipping = async (req, res) => {
   try {
     const channel = req.headers['x-channel']
     const { orderNumber } = req.params
-    const {
-      customerName,
-      phone,
-      address,
-      province,
-      district,
-      postalCode,
-      email,
-      subDistrict
-    } = req.body
+    // แก้ได้เฉพาะข้อมูลออกใบกำกับภาษี: ชื่อ, ที่อยู่
+    const { customerName, address } = req.body
 
     if (!channel) {
       return res.status(400).json({
@@ -104,14 +96,15 @@ exports.updateOrderShipping = async (req, res) => {
     // Build update object with only provided fields
     const updateData = {}
 
-    if (customerName !== undefined) updateData.shippingname = customerName
-    if (phone !== undefined) updateData.shippingphone = phone
+    if (customerName !== undefined) updateData.customername = customerName
     if (address !== undefined) updateData.shippingaddress = address
-    if (province !== undefined) updateData.shippingprovince = province
-    if (district !== undefined) updateData.shippingdistrict = district
-    if (postalCode !== undefined) updateData.shippingpostcode = postalCode
-    if (email !== undefined) updateData.shippingemail = email
-    if (subDistrict !== undefined) updateData.shippingsubdistrict = subDistrict
+
+    if (Object.keys(updateData).length === 0) {
+      return res.status(400).json({
+        status: 400,
+        message: 'Nothing to update (customerName, address)'
+      })
+    }
 
     // Add timestamp
     updateData.updatedatetime = new Date().toISOString()
@@ -133,7 +126,7 @@ exports.updateOrderShipping = async (req, res) => {
     // Map the updated order to frontend format
     const mappedOrder = {
       orderNumber: updatedOrder.number,
-      customerName: updatedOrder.shippingname || updatedOrder.customername || '',
+      customerName: updatedOrder.customername || '',
       phone: updatedOrder.shippingphone || '',
       address: updatedOrder.shippingaddress || '',
       province: updatedOrder.shippingprovince || '',
@@ -198,7 +191,7 @@ exports.getOrderByNumber = async (req, res) => {
     // Map MongoDB fields to frontend format
     const mappedOrder = {
       orderNumber: order.number,
-      customerName: order.shippingname || order.customername || '',
+      customerName: order.customername || '',
       phone: order.shippingphone || '',
       address: order.shippingaddress || '',
       province: order.shippingprovince || '',
