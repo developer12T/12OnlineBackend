@@ -7,6 +7,7 @@ const {
   updateStatusM3Success,
   updateStatusM3Success2,
   addOrderMakroPro,
+  addOrderAmaze,
   exportOrderExcel,
   updateInvoiceAndCo,
   printDeliveyMackro,
@@ -14,7 +15,8 @@ const {
   updateItemNameM3,
   updateInvFromExcel,
   updateInvoNumber,
-  exportOrderStockExcel
+  exportOrderStockExcel,
+  exportSapSalesOrder
 } = require('../../controllers/order.controller')
 
 const {
@@ -34,11 +36,13 @@ router.post('/getDashboardData', getDashboardData)
 router.post('/m3/update-status-success', updateStatusM3Success)
 router.get('/m3/update-status-success2', updateStatusM3Success2)
 router.get('/addOrderMakroPro', addOrderMakroPro)
+router.get('/addOrderAmaze', addOrderAmaze)
 router.get('/export/excel', exportOrderExcel)
 router.get('/updateInvoiceAndCo', updateInvoiceAndCo)
 router.get('/updateItemNameM3', updateItemNameM3)
 router.get('/updateInvoNumber', updateInvoNumber)
 router.post('/export-summary', exportOrderStockExcel)
+router.post('/export-sap', exportSapSalesOrder)
 
 // Online Portal - Search and Update Orders
 router.post('/search', searchOrder)

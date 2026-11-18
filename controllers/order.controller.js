@@ -1058,13 +1058,47 @@ exports.addOrderMakroPro = async (req, res) => {
   }
 }
 
+// สถานะออเดอร์ Amaze ที่จะดึงเข้าระบบ
+// (ready_to_ship อยู่ได้ไม่กี่ชั่วโมง เลยดึง waiting_confirm_received ด้วยกันตกหล่น)
+const AMAZE_SYNC_STATUSES = ['ready_to_ship', 'waiting_confirm_received']
+
+async function fetchAmazeOrders (accessToken, status) {
+  const orders = []
+  let page = 1
+  let totalItems = 0
+
+  do {
+    const res = await axios.get(
+      `${process.env.urlAmaze}/open-console/api/v2/client/order`,
+      {
+        params: { status, page },
+        headers: {
+          Accept: 'application/json',
+          Authorization: `Bearer ${accessToken}`
+        }
+      }
+    )
+    const data = res.data?.data || []
+    totalItems = res.data?.total_items || 0
+    orders.push(...data)
+    if (!data.length) break
+    page++
+  } while (orders.length < totalItems)
+
+  return orders
+}
+
 exports.addOrderAmaze = async (req, res) => {
   try {
     const channel = 'uat'
+    const dryRun = req.query.dryRun === '1' || req.body?.dryRun === true
 
     const { Order } = getModelsByChannel(channel, res, orderModel)
     const { Customer } = getModelsByChannel(channel, res, customerModel)
 
+    // ================================
+    // 1. Login + ดึง order จาก Amaze
+    // ================================
     const loginResponse = await axios.post(
       process.env.urlAmaze + '/open-console/api/v1/client/login',
       {
@@ -1079,244 +1113,204 @@ exports.addOrderAmaze = async (req, res) => {
       }
     )
 
-    if (
-      !loginResponse.data.succeeded ||
-      !loginResponse.data.data.access_token
-    ) {
-      throw new Error('Login failed: ' + JSON.stringify(loginResponse.data))
+    const accessToken = loginResponse.data?.data?.access_token
+    if (!loginResponse.data?.succeeded || !accessToken) {
+      throw new Error('Amaze login failed')
     }
 
-    const accessToken = loginResponse.data.data.access_token
-    console.log('Login successful, token obtained')
-    console.log('accessToken', accessToken)
+    const allOrders = []
+    for (const status of AMAZE_SYNC_STATUSES) {
+      allOrders.push(...(await fetchAmazeOrders(accessToken, status)))
+    }
 
-    // 2. ใช้ access_token เรียก order API
-    const orderResponse = await axios.get(
-      process.env.urlAmaze +
-        '/open-console/api/v2/client/order?status=ready_to_ship',
-      {
-        headers: {
-          Accept: 'application/json',
-          Authorization: `Bearer ${accessToken}`
-        }
-      }
-    )
-
-    const orders = orderResponse.data
-
-    if (!orders.length) {
+    if (!allOrders.length) {
       return res.status(200).json({ message: 'No orders to sync' })
     }
 
-    for (const order of orders) {
-      // 2.ตรวจสอบข้อมูล
-      const existingOrder = await Order.findOne({
-        where: { number: order.order_number }
+    const imported = []
+
+    // ================================
+    // 2. Loop order
+    // ================================
+    for (const order of allOrders) {
+      const number = order.amaze_order_id || order.order_number
+      const exists = await Order.findOne({ number })
+      if (exists) continue
+
+      const billing = order.billing_address || {}
+      const address = order.order_address || {}
+      const packages = order.order_packages || []
+
+      // ================================
+      // 3. Customer
+      // ================================
+      const customerTaxId = billing.tax_id || ''
+      const customerName = billing.name || order.customer_name || ''
+      const billingAddress = `${billing.address || ''} ${
+        billing.sub_district || ''
+      } ${billing.district || ''} ${billing.province || ''} ${
+        billing.postcode || ''
+      }`.trim()
+
+      let customer = await Customer.findOne({
+        customeriderp: String(order.customer_id)
       })
 
-      if (!existingOrder) {
-        const createdDateUTC = order.created_at
-        // Convert to Bangkok time (+7)
-        const dateObj = new Date(createdDateUTC)
-        const options = {
-          timeZone: 'Asia/Bangkok',
-          year: 'numeric',
-          month: '2-digit',
-          day: '2-digit',
-          hour: '2-digit',
-          minute: '2-digit',
-          second: '2-digit',
-          hour12: false // 24-hour format
-        }
-        // Format Bangkok time correctly
-        const bangkokTime = new Intl.DateTimeFormat('en-GB', options).format(
-          dateObj
-        )
-
-        const [date, time] = bangkokTime.replace(',', '').split(' ')
-        const [year, month, day] = date.split('/')
-        const finalDate = `${day}-${month}-${year}T${time}`
-
-        // const newOrderId = await generateUniqueId()
-        // const newCustomerId = await generateCustomerId()
-
-        const shipping = order.order_address || {}
-        const billing = order.billing_address || {}
-
-        let customercode = ''
-        let customer = await Customer.findOne({
-          where: { customeriderp: order.customer_id }
-        })
-
-        const customerEmail = order.billing_address?.email || ''
-        const customerTaxId = order.billing_address?.tax_id || ''
-        const statusPrintInv = customerTaxId ? 'TaxInvoice' : ''
-
+      if (!dryRun) {
         if (!customer) {
           customer = await Customer.create({
-            customerid: newCustomerId,
-            customeriderp: order.customer_id,
+            customeriderp: String(order.customer_id),
             customercode: customerTaxId ? '' : 'OAMZ000000',
-            customername: order.customer_name,
-            customeremail: customerEmail,
-            customerphone: order.billing_address?.phoneno || '',
-            customeraddress: `${order.billing_address?.address || ''} ${
-              order.billing_address?.district || ''
-            } ${order.billing_address?.sub_district || ''} ${
-              order.billing_address?.province || ''
-            } ${order.billing_address?.postcode || ''}`.trim(),
-            customerpostcode: order.billing_address?.postcode || '',
-            customerprovince: order.billing_address?.province || '',
-            customerdistrict: order.billing_address?.district || '',
-            customersubdistrict: order.billing_address?.sub_district || '',
-            customerstreetAddress: order.billing_address?.address || '',
-            customeridnumber: customerTaxId,
-            createddate: formatDate(order.created_at)
+            customername: customerName,
+            customeremail: billing.email || '',
+            customerphone: billing.phoneno || '',
+            customeraddress: billingAddress,
+            customerpostcode: billing.postcode || '',
+            customerprovince: billing.province || '',
+            customerdistrict: billing.district || '',
+            customersubdistrict: billing.sub_district || '',
+            customerstreetAddress: billing.address || '',
+            customeridnumber: customerTaxId
           })
-        } else {
-          if (!customer.customeridnumber && customerTaxId) {
-            await customer.update({ customeridnumber: customerTaxId })
-            await customer.update({ customercode: null })
-          }
-          if (!customer.customeridnumber) {
-            await customer.update({ customercode: 'OAMZ000000' })
-          }
-          if (customer) {
-            customercode = customer.customercode || ''
-          }
+        } else if (customerTaxId && !customer.customeridnumber) {
+          customer.customeridnumber = customerTaxId
+          customer.customercode = ''
+          await customer.save()
         }
-        if (customerTaxId) {
-          customersToUpdate.push({
-            // orderid: newOrderId,
-            customerid: order.customer_id,
-            customeridnumber: customerTaxId,
-            customername: order.billing_address?.name || order.customer_name,
-            customeraddress: `${order.billing_address?.address || ''} ${
-              order.billing_address?.district || ''
-            } ${order.billing_address?.sub_district || ''} ${
-              order.billing_address?.province || ''
-            } ${order.billing_address?.postcode || ''}`.trim(),
-            customerpostcode: order.billing_address?.postcode || '',
-            shippingaddress: `${order.billing_address?.address || ''} ${
-              order.billing_address?.district || ''
-            } ${order.billing_address?.sub_district || ''} ${
-              order.billing_address?.province || ''
-            } ${order.billing_address?.postcode || ''}`.trim(),
-            shippingpostcode: order.billing_address?.postcode || '',
-            customerphone: order.billing_address?.phoneno || '',
-            saleschannel: 'Amaze'
-          })
-        }
-
-        // test add shipping address
-        let shippingAddress = await ShippingAddress.create({
-          shi_customerid: customer ? customer.customerid : newCustomerId,
-          // order_id: newOrderId,
-          shippingname: order.billing_address?.name || order.customer_name,
-          shippingaddress: `${order.order_address?.address_name || ''} ${
-            order.order_address?.district_name || ''
-          } ${order.order_address?.ward_name || ''} ${
-            order.order_address?.city_name || ''
-          } ${order.order_address?.postcode || ''}`.trim(),
-          shippingphone: order.order_address?.phoneno || '',
-          shippingpostcode: order.order_address?.postcode || '',
-          shippingprovince: order.order_address?.city_name || '',
-          shippingdistrict: order.order_address?.district || '',
-          shippingsubdistrict: order.order_address?.ward_name || ''
-        })
-
-        // test add order
-        const newOrder = await Order.create({
-          // id: newOrderId,
-          number: order.order_number,
-          cono: '',
-          invno: '',
-          // ordertype: '0',
-          customerid: customer ? customer.customerid : newCustomerId,
-          customeriderp: customerTaxId ? customercode : 'OAMZ000000',
-          status:
-            order.order_packages[0].status === 'cancelled'
-              ? 'Voided'
-              : order.order_packages[0].status === 'ready_to_ship'
-              ? 'SHIPPING'
-              : order.order_packages[0].status,
-          paymentstatus:
-            order.order_packages[0].status === 'cancelled'
-              ? 'Voided'
-              : order.order_packages[0].status === 'ready_to_ship'
-              ? 'paid'
-              : order.order_packages[0].status,
-          amount: order.order_packages[0].grand_total,
-          vatamount: (
-            order.order_packages[0].grand_total -
-            order.order_packages[0].grand_total / 1.07
-          ).toFixed(2),
-          shippingamount: order.order_packages[0].shipping_amount,
-          shippingname: order.billing_address?.name || '',
-          shippingaddress: `${order.order_address?.address_name || ''} ${
-            order.order_address?.district_name || ''
-          } ${order.order_address?.ward_name || ''} ${
-            order.order_address?.city_name || ''
-          } ${order.order_address?.postcode || ''}`.trim(),
-          shippingphone: order.order_address?.phoneno || '',
-          shippingpostcode: order.order_address?.postcode || '',
-          shippingprovince: order.order_address?.province || '',
-          shippingdistrict: order.order_address?.district || '',
-          shippingsubdistrict: order.order_address?.ward_name || '',
-          shippingstreetAddress: order.order_address?.address || '',
-          orderdate: finalDate,
-          orderdateString: formatDate(order.created_at),
-          paymentamount: '0',
-          description: '',
-          discount: '0',
-          platformdiscount: '0',
-          sellerdiscount: '0',
-          discountamount: 0,
-          voucheramount: 0,
-          vattype: 3,
-          saleschannel: 'Amaze',
-          vatpercent: 7,
-          createdatetime: finalDate,
-          createdatetimeString: finalDate,
-          updatedatetime: finalDate,
-          updatedatetimeString: finalDate,
-          totalproductamount: order.order_packages[0].sub_total,
-          isDeposit: '0',
-          statusprint: '000',
-          statusPrininvSuccess: '000',
-          statusprintinv: statusPrintInv
-        })
-
-        // for (const orderPackage of order.order_packages) {
-        //   for (const orderLine of orderPackage.order_items) {
-        //     // const product = await Product.findOne({
-        //     //   where: { sku: orderLine.sku }
-        //     // })
-        //     // console.log('orderLine', orderLine);
-        //     if (!product) {
-        //       console.warn(`Not Found SKU: ${orderLine.sku}`)
-        //       continue
-        //     }
-        //     // test add order detail
-        //     await OrderDetail.create({
-        //       id: newOrder.id,
-        //       numberOrder: newOrder.number,
-        //       productid: product.id,
-        //       sku: orderLine.sku,
-        //       name: product.name,
-        //       pricepernumber: orderLine.unit_price,
-        //       totalprice: orderLine.grand_total,
-        //       number: orderLine.quantity_ordered,
-        //       unittext: product.unittext,
-        //       discountamount: orderLine.sub_total - orderLine.grand_total
-        //     })
-
-        //     console.log(`Added Order Detail SKU: ${orderLine.sku}`)
-        //   }
-        // }
       }
+
+      const customerCode = customer
+        ? customer.customercode || ''
+        : customerTaxId
+        ? ''
+        : 'OAMZ000000'
+
+      // ================================
+      // 4. listProduct (map + M3)
+      // ================================
+      const orderLines = packages.flatMap(p => p.order_items || [])
+      const listProduct = await mapProductWithM3(
+        orderLines.map((line, idx) => ({
+          line_number: idx + 1,
+          offer_id: line.product_id,
+          product_shop_sku: line.seller_sku || line.sku,
+          product_title: line.product_info?.name || line.name || '',
+          quantity: line.quantity_ordered,
+          price_unit: line.unit_price,
+          total_price: line.sub_total
+        })),
+        ItemM3
+      )
+
+      // ราคาก่อนลด (original_unit_price) → pricePerUnitOri
+      listProduct.forEach((item, idx) => {
+        const line = orderLines[idx]
+        const ori = Number(line.original_unit_price ?? line.unit_price) || 0
+        const qty = Number(line.quantity_ordered) || 0
+        item.pricePerUnitOri = ori
+        item.discount = Math.max(0, (ori - Number(line.unit_price || 0)) * qty)
+      })
+
+      // ค่าขนส่ง (เหมือนช่องทางอื่นใน webhook.service)
+      const shippingAmount = packages.reduce(
+        (sum, p) => sum + (Number(p.shipping_amount) || 0),
+        0
+      )
+      if (shippingAmount > 0) {
+        listProduct.push({
+          itemNumber: listProduct.length + 1,
+          productid: '9999999',
+          procode: '',
+          sku: 'ZNS1401001_JOB',
+          itemCode: 'ZNS1401001_JOB',
+          unit: 'JOB',
+          name: 'ค่าขนส่ง',
+          quantity: 1,
+          discount: 0,
+          discountChanel: '',
+          pricePerUnitOri: shippingAmount,
+          pricePerUnit: shippingAmount,
+          totalprice: shippingAmount
+        })
+      }
+
+      const amount = listProduct.reduce(
+        (sum, item) => sum + (Number(item.totalprice) || 0),
+        0
+      )
+
+      const createdAt = order.order_date || order.created_at
+
+      const newOrder = {
+        id: order.id,
+        number,
+        cono: '',
+        invno: '',
+        ordertype: '0',
+
+        customerid: String(order.customer_id),
+        customername: customer?.customername || customerName,
+        customercode: customerCode,
+        customeridnumber: customerTaxId,
+
+        status: 'Success',
+        paymentstatus: 'Paid',
+
+        amount,
+        vatamount: Number((amount - amount / 1.07).toFixed(2)),
+        totalproductamount: amount,
+
+        shippingamount: shippingAmount,
+        shippingname: address.contact_name || customerName,
+        shippingaddress: `${address.address_name || ''} ${
+          address.ward_name || ''
+        } ${address.district_name || ''} ${address.city_name || ''} ${
+          address.postcode || ''
+        }`.trim(),
+        shippingphone: address.contact_phone_number || '',
+        shippingpostcode: address.postcode || '',
+        shippingprovince: address.city_name || '',
+        shippingdistrict: address.district_name || '',
+        shippingsubdistrict: address.ward_name || '',
+        shippingstreetAddress: address.address_name || '',
+
+        orderdate: createdAt,
+        orderdateString: createdAt,
+
+        saleschannel: 'Amaze',
+        vatpercent: 7,
+        vattype: 3,
+
+        statusprint: '000',
+        statusprintinv: customerTaxId ? 'TaxInvoice' : '',
+        statusPrininvSuccess: '000',
+
+        createdatetime: createdAt,
+        createdatetimeString: createdAt,
+        updatedatetime: order.updated_at || createdAt,
+        updatedatetimeString: order.updated_at || createdAt,
+
+        listProduct
+      }
+
+      if (!dryRun) {
+        await Order.create(newOrder)
+        console.log(`✔ Imported Amaze Order: ${number}`)
+      }
+      imported.push(dryRun ? newOrder : number)
     }
-  } catch (error) {}
+
+    res.status(200).json({
+      message: dryRun
+        ? 'Dry run (ไม่ได้บันทึก)'
+        : 'Added Order Amaze Successfully!',
+      total: allOrders.length,
+      imported
+    })
+  } catch (error) {
+    console.error('[addOrderAmaze]', error.response?.data || error.message)
+    res.status(500).json({ message: 'Internal server error' })
+  }
 }
 
 exports.streamMakroPdf = (req, res) => {
@@ -1725,6 +1719,149 @@ exports.updateInvoNumber = async (req, res) => {
   } catch (error) {
     console.error('[updateInvoNumber]', error)
     res.status(500).json({ message: 'Internal server error' })
+  }
+}
+
+// ==========================
+// 🔹 SAP Sales Order Import (ใช้ template จาก SAP)
+// ==========================
+const SAP_TEMPLATE_PATH = path.join(
+  __dirname,
+  '../template/sap_sales_order_template.xlsx'
+)
+const SAP_HEADER_DEFAULT = {
+  salesOrderType: 'Z203',
+  salesOrganization: '2000',
+  distributionChannel: '70',
+  division: '00',
+  soldToParty: '1000000041',
+  plant: '2026',
+  storageLocation: 'O001'
+}
+const SAP_FIRST_DATA_ROW = 6
+// ค่าขนส่งส่งเป็นรายการสินค้าแยก → แปลงรหัส M3 เป็นรหัสสินค้าใน SAP
+const SAP_SHIPPING_SKU = 'ZNS1401001'
+const SAP_SHIPPING_ITEM = {
+  product: 'ZNS1401001', // TODO: เปลี่ยนเป็นรหัสสินค้าค่าขนส่งใน SAP
+  unit: 'JOB'
+}
+
+exports.exportSapSalesOrder = async (req, res) => {
+  try {
+    const orders = Array.isArray(req.body.orders) ? req.body.orders : []
+    if (!orders.length) {
+      return res.status(400).json({ message: 'orders is required' })
+    }
+
+    const workbook = new ExcelJS.Workbook()
+    await workbook.xlsx.readFile(SAP_TEMPLATE_PATH)
+    const worksheet = workbook.getWorksheet('Order Data')
+
+    // เก็บ style แถวตัวอย่างไว้ แล้วล้างข้อมูลตัวอย่างทิ้ง
+    const styleRow = worksheet.getRow(SAP_FIRST_DATA_ROW)
+    const colStyles = {}
+    styleRow.eachCell({ includeEmpty: true }, (cell, col) => {
+      colStyles[col] = cell.style
+    })
+    for (let r = SAP_FIRST_DATA_ROW; r <= worksheet.rowCount; r++) {
+      worksheet.getRow(r).eachCell({ includeEmpty: true }, cell => {
+        cell.value = null
+      })
+    }
+
+    const str = v => (v === undefined || v === null ? '' : String(v))
+    const round2 = n => Math.round((Number(n) + Number.EPSILON) * 100) / 100
+    const toSapDate = d => (d ? moment(d).format('YYYYMMDD') : '')
+
+    let rowIndex = SAP_FIRST_DATA_ROW
+    let itemNo = 0
+
+    orders.forEach((order, orderIdx) => {
+      const tempId = String(orderIdx + 1).padStart(10, '0')
+      const docDate = toSapDate(
+        order.printdatetimeString || order.printdate || order.orderdate
+      )
+      const items = order.item || []
+
+      // DISONLINE = ส่วนลดท้ายบิล → ใส่เป็น Online Discount ที่ header
+      const onlineDiscount = items
+        .filter(it => it.sku === 'DISONLINE')
+        .reduce((sum, it) => sum + Math.abs(Number(it.totalprice) || 0), 0)
+
+      const itemPrice = it =>
+        Number(it.pricepernumberOri ?? it.pricepernumber) || 0
+
+      items
+        .filter(it => it.sku !== 'DISONLINE')
+        // ค่าขนส่ง 0 บาท ไม่ต้องส่ง
+        .filter(it => !(it.sku === SAP_SHIPPING_SKU && itemPrice(it) === 0))
+        .forEach(it => {
+          itemNo++
+          const isShipping = it.sku === SAP_SHIPPING_SKU
+          const qty = Number(it.number) || 0
+          const price = itemPrice(it)
+          const discountPerUnit =
+            qty > 0 ? round2((Number(it.discount) || 0) / qty) : 0
+          const unit = isShipping ? SAP_SHIPPING_ITEM.unit : str(it.unit)
+
+          const values = {
+            B: tempId,
+            C: SAP_HEADER_DEFAULT.salesOrderType,
+            D: SAP_HEADER_DEFAULT.salesOrganization,
+            E: SAP_HEADER_DEFAULT.distributionChannel,
+            F: SAP_HEADER_DEFAULT.division,
+            G: SAP_HEADER_DEFAULT.soldToParty,
+            H: '',
+            I: str(order.number),
+            J: docDate,
+            K: docDate,
+            L: onlineDiscount ? round2(onlineDiscount) : '',
+            M: String(itemNo),
+            N: isShipping ? SAP_SHIPPING_ITEM.product : str(it.sku),
+            O: '',
+            P: price === 0 ? 'CBXN' : '',
+            Q: qty,
+            R: unit,
+            S: String(price),
+            T: '1',
+            U: unit,
+            V: discountPerUnit ? String(discountPerUnit) : '',
+            W: discountPerUnit ? '1' : '',
+            X: discountPerUnit ? unit : '',
+            Y: SAP_HEADER_DEFAULT.plant,
+            Z: SAP_HEADER_DEFAULT.storageLocation,
+            AA: ''
+          }
+
+          const row = worksheet.getRow(rowIndex++)
+          Object.entries(values).forEach(([col, value]) => {
+            const cell = row.getCell(col)
+            if (colStyles[cell.col]) cell.style = colStyles[cell.col]
+            if (value !== '') cell.value = value
+          })
+          row.commit()
+        })
+    })
+
+    res.setHeader(
+      'Content-Type',
+      'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+    )
+    res.setHeader(
+      'Content-Disposition',
+      `attachment; filename=SAP_Sales_Order_${moment().format(
+        'YYYYMMDD_HHmm'
+      )}.xlsx`
+    )
+
+    await workbook.xlsx.write(res)
+    res.end()
+  } catch (err) {
+    console.error('[exportSapSalesOrder]', err)
+    res.status(500).json({
+      message: 'Export SAP excel failed',
+      error: err.message
+    })
   }
 }
 

@@ -55,6 +55,11 @@ addOrderAmaze.put('/addOrderAmaze', async (req, res) => {
         const dataAmaze = await orderAmazeAll();
         // console.log(dataAmaze);
 
+        // Amaze ตอบ succeeded แต่ data เป็น null = ไม่มีออเดอร์ ready_to_ship
+        if (dataAmaze?.succeeded && !dataAmaze.data?.length) {
+            return res.status(200).json({ message: "ไม่มีออเดอร์ Amaze ใหม่" });
+        }
+
         if (!dataAmaze || !dataAmaze.data) {
             return res.status(400).json({ message: "ข้อมูลไม่ถูกต้อง" });
         }

@@ -24,11 +24,13 @@ const api = axios.create({
 /**
  * Helper: call API safely (ไม่ล้มทั้ง cron)
  */
-async function safePut (name, url, payload) {
+async function safePut (name, url, payload, method = 'get') {
   const start = Date.now()
   try {
     console.log(`[CRON] ${name} start`)
-    const res = await api.get(url, payload)
+    // route แบบ PUT (เช่น /zort/...) ต้องส่ง token ใน body
+    const res =
+      method === 'put' ? await api.put(url, payload) : await api.get(url, payload)
     console.log(
       `[CRON] ${name} success (${Date.now() - start} ms)`,
       res?.data ?? ''
@@ -59,10 +61,14 @@ async function zortCronFunc () {
     payload
   )
 
+  await safePut('addOrderAmaze', '/online/api/order/addOrderAmaze', payload)
+
+  // backup: ตัวเดิมที่บันทึกลงฐาน SQL (zort) — ปิดไว้ ใช้ Mongo แทน
   // await safePut(
-  //   'addOrderAmaze',
+  //   'addOrderAmazeSql',
   //   '/zort/order/OrderManage/addOrderAmaze',
-  //   payload
+  //   payload,
+  //   'put'
   // )
 }
 
